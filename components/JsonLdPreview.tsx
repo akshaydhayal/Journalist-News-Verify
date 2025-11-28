@@ -34,7 +34,7 @@ export function JsonLdPreview({ report }: JsonLdPreviewProps) {
         report.description,
         `ipfs://Qm.../media${fileExtension}`, // Placeholder URL - will be replaced with Arweave URL
         '0x...', // Placeholder hash - will be computed during publish
-        report.location,
+        report.location || { latitude: 0, longitude: 0 }, // Fallback if location not set
         report.timestamp || new Date().toISOString()
       )
 

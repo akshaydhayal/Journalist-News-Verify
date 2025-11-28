@@ -58,7 +58,14 @@ export function createKnowledgeAsset(
   description: string,
   mediaUrl: string,
   mediaHash: string,
-  location: { latitude: number; longitude: number },
+  location: { 
+    latitude: number
+    longitude: number
+    displayName?: string
+    city?: string
+    state?: string
+    country?: string
+  },
   timestamp: string,
   reporterId?: string
 ): KnowledgeAsset {
@@ -69,6 +76,27 @@ export function createKnowledgeAsset(
     : mediaUrl.includes('.mp4') 
     ? 'video/mp4' 
     : 'application/octet-stream'
+
+  // Build spatial coverage with location name if available
+  const spatialCoverage: any = {
+    type: 'Place',
+    'schema:latitude': location.latitude,
+    'schema:longitude': location.longitude,
+  }
+
+  // Add location name information if available
+  if (location.displayName) {
+    spatialCoverage['schema:name'] = location.displayName
+  }
+  if (location.city) {
+    spatialCoverage['schema:addressLocality'] = location.city
+  }
+  if (location.state) {
+    spatialCoverage['schema:addressRegion'] = location.state
+  }
+  if (location.country) {
+    spatialCoverage['schema:addressCountry'] = location.country
+  }
 
   return {
     '@context': {
@@ -86,11 +114,7 @@ export function createKnowledgeAsset(
       '@type': 'prov:Entity',
       '@id': mediaUrl,
       'schema:contentUrl': mediaUrl,
-      'schema:spatialCoverage': {
-        type: 'Place',
-        'schema:latitude': location.latitude,
-        'schema:longitude': location.longitude,
-      },
+      'schema:spatialCoverage': spatialCoverage,
       'schema:creator': reporterId || 'did:example:reporter',
       'prov:generatedAtTime': timestamp,
       'schema:encodingFormat': mediaFormat,

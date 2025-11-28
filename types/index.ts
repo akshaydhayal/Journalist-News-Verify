@@ -2,6 +2,11 @@ export interface LocationData {
   latitude: number;
   longitude: number;
   accuracy?: number;
+  city?: string;
+  state?: string;
+  country?: string;
+  displayName?: string;
+  fullAddress?: string;
 }
 
 export interface MediaFile {

@@ -25,7 +25,7 @@ export default function Home() {
     setStep('details')
   }
 
-  const handleLocationCaptured = (location: { latitude: number; longitude: number }) => {
+  const handleLocationCaptured = (location: { latitude: number; longitude: number; displayName?: string; city?: string; state?: string; country?: string }) => {
     setReport(prev => ({ ...prev, location }))
   }
 
@@ -147,9 +147,17 @@ export default function Home() {
                       <MapPin className="w-4 h-4 mr-2" />
                       Location
                     </h3>
-                    <p className="text-gray-900">
+                    {report.location.displayName && (
+                      <p className="text-gray-900 font-medium mb-2">{report.location.displayName}</p>
+                    )}
+                    <p className="text-sm text-gray-600">
                       {report.location.latitude.toFixed(6)}, {report.location.longitude.toFixed(6)}
                     </p>
+                    {report.location.accuracy && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Accuracy: ±{Math.round(report.location.accuracy)}m
+                      </p>
+                    )}
                   </div>
                 )}
                 {report.timestamp && (
