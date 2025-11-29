@@ -1,8 +1,5 @@
 {
   "buildCommand": "npm run build",
-  "functions": {
-    "app/api/**/*.ts": {
-      "includeFiles": "dkg-publish/**"
-    }
-  }
+  "installCommand": "npm install",
+  "framework": "nextjs"
 }

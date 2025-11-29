@@ -1,6 +1,10 @@
 // API route for publishing News Reports to DKG
 // Uses the local dkg-publish module
 
+// Force Node.js runtime for this route
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { KnowledgeAsset } from '@/types';
 import connectDB from '@/lib/mongodb';
@@ -83,9 +87,17 @@ export async function POST(request: NextRequest) {
         const cwdContents = fs.existsSync(process.cwd()) 
           ? fs.readdirSync(process.cwd()).slice(0, 20).join(', ')
           : 'CWD not accessible';
+        
+        // Check dkg-publish folder contents
+        const dkgFolder = path.join(process.cwd(), 'dkg-publish');
+        const dkgContents = fs.existsSync(dkgFolder)
+          ? fs.readdirSync(dkgFolder).join(', ')
+          : 'dkg-publish folder not found';
+        
         throw new Error(
           `DKG publish script not found. Tried: ${possiblePaths.join(', ')}. ` +
-          `CWD: ${process.cwd()}. Contents: ${cwdContents}`
+          `CWD: ${process.cwd()}. CWD Contents: ${cwdContents}. ` +
+          `dkg-publish folder contents: ${dkgContents}`
         );
       }
       
