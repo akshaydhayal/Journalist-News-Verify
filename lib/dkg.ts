@@ -20,7 +20,13 @@ export function createKnowledgeAsset(
     country?: string
   },
   timestamp: string,
-  reporterId?: string
+  reporterId?: string,
+  journalist?: {
+    name?: string
+    email?: string
+    organization?: string
+    contact?: string
+  }
 ): KnowledgeAsset {
   const mediaFormat = mediaUrl.includes('.jpg') || mediaUrl.includes('.jpeg') 
     ? 'image/jpeg' 
@@ -35,6 +41,33 @@ export function createKnowledgeAsset(
   const headlineSlug = headline.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const timestampId = new Date(timestamp).getTime();
   const reportId = `urn:journalist-news:report:${headlineSlug}:${timestampId}`;
+
+  // Generate reporter ID from journalist info or use provided reporterId
+  let authorId = reporterId || 'urn:journalist-news:reporter:anonymous';
+  if (journalist?.name || journalist?.email) {
+    const nameSlug = journalist.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'reporter';
+    const emailHash = journalist.email ? journalist.email.split('@')[0] : '';
+    authorId = `urn:journalist-news:reporter:${nameSlug}${emailHash ? '-' + emailHash : ''}`;
+  }
+
+  // Build author object with journalist details
+  const author: any = {
+    '@type': 'Person',
+    '@id': authorId,
+  };
+
+  if (journalist?.name) {
+    author['name'] = journalist.name;
+  }
+  if (journalist?.email) {
+    author['email'] = journalist.email;
+  }
+  if (journalist?.organization) {
+    author['affiliation'] = {
+      '@type': 'Organization',
+      'name': journalist.organization,
+    };
+  }
 
   // Build spatial coverage with location name if available
   const spatialCoverage: any = {
@@ -67,10 +100,7 @@ export function createKnowledgeAsset(
     'datePublished': timestamp,
     'url': mediaUrl,
     'contentLocation': spatialCoverage,
-    'author': {
-      '@type': 'Person',
-      '@id': reporterId || 'urn:journalist-news:reporter:anonymous',
-    },
+    'author': author,
     'associatedMedia': {
       '@type': 'MediaObject',
       '@id': mediaUrl,

@@ -16,6 +16,13 @@ export interface MediaFile {
   arweaveUrl?: string;
 }
 
+export interface JournalistInfo {
+  name?: string;
+  email?: string;
+  organization?: string;
+  contact?: string;
+}
+
 export interface NewsReport {
   headline: string;
   description: string;
@@ -23,6 +30,7 @@ export interface NewsReport {
   location: LocationData;
   timestamp: string;
   reporterId?: string;
+  journalist?: JournalistInfo;
 }
 
 export interface KnowledgeAsset {
@@ -46,6 +54,12 @@ export interface KnowledgeAsset {
   'author': {
     '@type': string;
     '@id': string;
+    'name'?: string;
+    'email'?: string;
+    'affiliation'?: {
+      '@type': string;
+      'name': string;
+    };
   };
   'associatedMedia': {
     '@type': string;

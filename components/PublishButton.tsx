@@ -53,7 +53,8 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
         hash,
         report.location,
         report.timestamp || new Date().toISOString(),
-        report.reporterId
+        report.reporterId,
+        report.journalist
       )
 
       setProgress('Publishing to OriginTrail DKG...')

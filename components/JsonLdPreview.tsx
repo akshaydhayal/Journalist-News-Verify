@@ -15,6 +15,8 @@ export function JsonLdPreview({ report }: JsonLdPreviewProps) {
   const [previewJson, setPreviewJson] = useState<string>('')
 
   useEffect(() => {
+    // Show preview if we have minimum required fields (headline, description, location, media)
+    // Journalist info is optional but will be included if present
     if (report.headline && report.description && report.location && report.media && report.media.length > 0) {
       // Determine media format from file
       const mediaFile = report.media[0]
@@ -35,7 +37,9 @@ export function JsonLdPreview({ report }: JsonLdPreviewProps) {
         `ipfs://Qm.../media${fileExtension}`, // Placeholder URL - will be replaced with Arweave URL
         '0x...', // Placeholder hash - will be computed during publish
         report.location || { latitude: 0, longitude: 0 }, // Fallback if location not set
-        report.timestamp || new Date().toISOString()
+        report.timestamp || new Date().toISOString(),
+        report.reporterId,
+        report.journalist // Include journalist info in preview
       )
 
       // Format JSON with proper indentation
