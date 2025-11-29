@@ -96,7 +96,7 @@ export function JsonLdPreview({ report }: JsonLdPreviewProps) {
         <div className="space-y-2">
           <div className="px-4 py-2 bg-yellow-50 border-l-4 border-yellow-400">
             <p className="text-xs text-yellow-800">
-              <strong>Note:</strong> The <code className="bg-yellow-100 px-1 rounded">schema:url</code> and <code className="bg-yellow-100 px-1 rounded">schema:sha256</code> values shown as placeholders will be replaced with actual Arweave URL and computed hash during publishing.
+              <strong>Note:</strong> The <code className="bg-yellow-100 px-1 rounded">url</code>, <code className="bg-yellow-100 px-1 rounded">contentUrl</code>, and <code className="bg-yellow-100 px-1 rounded">sha256</code> values shown as placeholders will be replaced with actual Arweave URL and computed hash during publishing.
             </p>
           </div>
           <div className="p-4 bg-gray-900 text-gray-100 overflow-x-auto max-h-96 overflow-y-auto">

@@ -30,9 +30,15 @@ export function createKnowledgeAsset(
     ? 'video/mp4' 
     : 'application/octet-stream'
 
+  // Generate a unique ID for this news report
+  // Using headline slug + timestamp to make it unique
+  const headlineSlug = headline.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const timestampId = new Date(timestamp).getTime();
+  const reportId = `urn:journalist-news:report:${headlineSlug}:${timestampId}`;
+
   // Build spatial coverage with location name if available
   const spatialCoverage: any = {
-    type: 'Place',
+    '@type': 'Place',
     'schema:latitude': location.latitude,
     'schema:longitude': location.longitude,
   }
@@ -52,32 +58,27 @@ export function createKnowledgeAsset(
   }
 
   return {
-    '@context': {
-      schema: 'https://schema.org/',
-      prov: 'http://www.w3.org/ns/prov#',
-      foaf: 'http://xmlns.com/foaf/0.1/',
-      sioc: 'http://rdfs.org/sioc/ns#',
+    '@context': 'https://schema.org/',
+    '@id': reportId,
+    '@type': 'SocialMediaPosting',
+    'name': headline,
+    'headline': headline,
+    'description': description,
+    'datePublished': timestamp,
+    'url': mediaUrl,
+    'contentLocation': spatialCoverage,
+    'author': {
+      '@type': 'Person',
+      '@id': reporterId || 'urn:journalist-news:reporter:anonymous',
     },
-    '@type': ['schema:SocialMediaPosting', 'prov:Entity'],
-    'schema:headline': headline,
-    'schema:description': description,
-    'schema:datePublished': timestamp,
-    'schema:url': mediaUrl,
-    'prov:hadPrimarySource': {
-      '@type': 'prov:Entity',
+    'associatedMedia': {
+      '@type': 'MediaObject',
       '@id': mediaUrl,
-      'schema:contentUrl': mediaUrl,
-      'schema:spatialCoverage': spatialCoverage,
-      'schema:creator': reporterId || 'did:example:reporter',
-      'prov:generatedAtTime': timestamp,
-      'schema:encodingFormat': mediaFormat,
-      'schema:sha256': mediaHash,
+      'contentUrl': mediaUrl,
+      'encodingFormat': mediaFormat,
+      'sha256': mediaHash,
+      'dateCreated': timestamp,
     },
-    ...(reporterId && {
-      'prov:wasAttributedTo': {
-        '@id': reporterId,
-      },
-    }),
   }
 }
 

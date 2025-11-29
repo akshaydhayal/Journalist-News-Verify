@@ -36,7 +36,11 @@ Create a `.env.local` file in the root directory:
 
 ```env
 # OriginTrail DKG Configuration (Required for publishing)
+# Note: PRIVATE_KEY or DKG_PRIVATE_KEY can be used (PRIVATE_KEY is used by dkg-publish demo)
+PRIVATE_KEY=your_private_key_here
+# OR
 DKG_PRIVATE_KEY=your_private_key_here
+
 DKG_NODE_ENDPOINT=https://v6-pegasus-node-03.origin-trail.network
 DKG_NODE_PORT=8900
 DKG_BLOCKCHAIN_NAME=otp:20430

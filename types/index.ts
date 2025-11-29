@@ -26,34 +26,34 @@ export interface NewsReport {
 }
 
 export interface KnowledgeAsset {
-  '@context': {
-    schema: string;
-    prov: string;
-    foaf: string;
-    sioc: string;
+  '@context': string;
+  '@id': string;
+  '@type': string;
+  'name': string;
+  'headline': string;
+  'description': string;
+  'datePublished': string;
+  'url'?: string;
+  'contentLocation': {
+    '@type': string;
+    'schema:latitude': number;
+    'schema:longitude': number;
+    'schema:name'?: string;
+    'schema:addressLocality'?: string;
+    'schema:addressRegion'?: string;
+    'schema:addressCountry'?: string;
   };
-  '@type': string[];
-  '@id'?: string;
-  'schema:headline': string;
-  'schema:description': string;
-  'schema:datePublished': string;
-  'schema:url'?: string;
-  'prov:hadPrimarySource': {
+  'author': {
     '@type': string;
     '@id': string;
-    'schema:contentUrl': string;
-    'schema:spatialCoverage': {
-      type: string;
-      'schema:latitude': number;
-      'schema:longitude': number;
-    };
-    'schema:creator'?: string;
-    'prov:generatedAtTime': string;
-    'schema:encodingFormat': string;
-    'schema:sha256': string;
   };
-  'prov:wasAttributedTo'?: {
+  'associatedMedia': {
+    '@type': string;
     '@id': string;
+    'contentUrl': string;
+    'encodingFormat': string;
+    'sha256': string;
+    'dateCreated': string;
   };
 }
 

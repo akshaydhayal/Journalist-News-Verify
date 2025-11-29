@@ -1,9 +1,12 @@
 // API route for publishing News Reports to DKG
+// Uses the local dkg-publish module
 
 import { NextRequest, NextResponse } from 'next/server';
 import { KnowledgeAsset } from '@/types';
 import connectDB from '@/lib/mongodb';
 import NewsReport from '@/models/NewsReport';
+import { spawn } from 'child_process';
+import path from 'path';
 
 // Type for the publish result
 interface DKGPublishResult {
@@ -20,20 +23,20 @@ export async function POST(request: NextRequest) {
     const knowledgeAsset: KnowledgeAsset = await request.json();
     
     // Validate knowledge asset structure
-    if (!knowledgeAsset['@context'] || !knowledgeAsset['@type'] || !knowledgeAsset['schema:headline']) {
+    if (!knowledgeAsset['@context'] || !knowledgeAsset['@type'] || !knowledgeAsset['@id'] || !knowledgeAsset['headline']) {
       return NextResponse.json(
-        { success: false, error: 'Invalid Knowledge Asset structure' },
+        { success: false, error: 'Invalid Knowledge Asset structure - missing @context, @type, @id, or headline' },
         { status: 400 }
       );
     }
     
     // Check if DKG is configured
-    const privateKey = process.env.DKG_PRIVATE_KEY;
+    const privateKey = process.env.PRIVATE_KEY || process.env.DKG_PRIVATE_KEY;
     
     if (!privateKey) {
       return NextResponse.json({
         success: false,
-        error: 'DKG private key not configured. Please set DKG_PRIVATE_KEY in environment variables.',
+        error: 'DKG private key not configured. Please set PRIVATE_KEY or DKG_PRIVATE_KEY in environment variables.',
         jsonld: knowledgeAsset,
       }, { status: 500 });
     }
@@ -46,46 +49,71 @@ export async function POST(request: NextRequest) {
     let result: DKGPublishResult;
     
     try {
-      // Use the dkg.js npm package directly
-      // Dynamic import to avoid bundling issues
-      const DKGModule = await import('dkg.js');
-      const DKG = DKGModule.default || DKGModule;
+      // Use child process to run dkg-publish script
+      // This avoids ES module import issues with Next.js webpack
+      const scriptPath = path.resolve(process.cwd(), 'dkg-publish', 'publish-api.js');
       
-      console.log('Creating DKG client with endpoint:', nodeEndpoint);
+      console.log('Publishing via child process:', scriptPath);
+      console.log('Node endpoint:', nodeEndpoint);
       
-      // Create DKG client
-      const dkgClient = new DKG({
-        endpoint: nodeEndpoint,
-        port: nodePort,
-        blockchain: {
-          name: blockchainName,
-          privateKey: privateKey,
-        },
-        maxNumberOfRetries: 300,
-        frequency: 2,
-        contentType: 'all',
-        nodeApiVersion: '/v1',
-      });
-      
-      // Transform to DKG format
-      const dkgContent = {
-        public: knowledgeAsset,
-      };
-      
-      // Publish to DKG
-      console.log('Publishing to DKG...');
-      const createResult = await dkgClient.asset.create(dkgContent, {
-        epochsNum: 2,
-        minimumNumberOfFinalizationConfirmations: 3,
-        minimumNumberOfNodeReplications: 1,
+      // Run the publish script as a child process
+      const publishResult = await new Promise<any>((resolve, reject) => {
+        const child = spawn('node', [scriptPath], {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            DKG_NODE_ENDPOINT: nodeEndpoint,
+            DKG_NODE_PORT: nodePort,
+            DKG_BLOCKCHAIN_NAME: blockchainName,
+            PRIVATE_KEY: privateKey,
+          },
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        
+        let stdout = '';
+        let stderr = '';
+        
+        child.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+        
+        child.stderr.on('data', (data) => {
+          stderr += data.toString();
+          console.log('DKG stderr:', data.toString());
+        });
+        
+        child.on('close', (code) => {
+          console.log('Child process exited with code:', code);
+          console.log('stdout:', stdout);
+          
+          try {
+            // Parse the JSON output from the script
+            const result = JSON.parse(stdout.trim());
+            resolve(result);
+          } catch (e) {
+            reject(new Error(`Failed to parse output: ${stdout}. Stderr: ${stderr}`));
+          }
+        });
+        
+        child.on('error', (err) => {
+          reject(err);
+        });
+        
+        // Send the knowledge asset as JSON to stdin
+        child.stdin.write(JSON.stringify(knowledgeAsset));
+        child.stdin.end();
       });
       
       console.log('DKG publish completed');
-      console.log('Create result:', JSON.stringify(createResult, null, 2));
+      console.log('Create result:', JSON.stringify(publishResult, null, 2));
+      
+      if (!publishResult.success) {
+        throw new Error(publishResult.error || 'DKG publish failed');
+      }
       
       // Extract UAL and datasetRoot
-      const ual = createResult.UAL || createResult.ual;
-      const datasetRoot = createResult.publicAssertionId || createResult.datasetRoot || null;
+      const ual = publishResult.UAL;
+      const datasetRoot = publishResult.datasetRoot || null;
       
       if (!ual) {
         throw new Error('DKG publish succeeded but no UAL returned');
@@ -95,7 +123,7 @@ export async function POST(request: NextRequest) {
         success: true,
         ual: ual,
         datasetRoot: datasetRoot || undefined,
-        operation: createResult.operation || undefined,
+        operation: publishResult.operation || undefined,
       };
     } catch (dkgError) {
       console.error('DKG publish error:', dkgError);
@@ -119,26 +147,26 @@ export async function POST(request: NextRequest) {
       const db = await connectDB();
       
       if (db) {
-        const headline = knowledgeAsset['schema:headline'] || 'Untitled Report';
-        const description = knowledgeAsset['schema:description'] || '';
-        const mediaUrl = knowledgeAsset['schema:url'] || '';
-        const mediaHash = knowledgeAsset['prov:hadPrimarySource']?.['schema:sha256'] || '';
-        const spatialCoverage = knowledgeAsset['prov:hadPrimarySource']?.['schema:spatialCoverage'] || {};
+        const headline = knowledgeAsset['headline'] || knowledgeAsset['name'] || 'Untitled Report';
+        const description = knowledgeAsset['description'] || '';
+        const mediaUrl = knowledgeAsset['url'] || knowledgeAsset['associatedMedia']?.['contentUrl'] || '';
+        const mediaHash = knowledgeAsset['associatedMedia']?.['sha256'] || '';
+        const contentLocation = knowledgeAsset['contentLocation'] || {};
         const location = {
-          latitude: spatialCoverage['schema:latitude'] || 0,
-          longitude: spatialCoverage['schema:longitude'] || 0,
-          displayName: spatialCoverage['schema:name'],
-          city: spatialCoverage['schema:addressLocality'],
-          state: spatialCoverage['schema:addressRegion'],
-          country: spatialCoverage['schema:addressCountry'],
+          latitude: contentLocation['schema:latitude'] || 0,
+          longitude: contentLocation['schema:longitude'] || 0,
+          displayName: contentLocation['schema:name'],
+          city: contentLocation['schema:addressLocality'],
+          state: contentLocation['schema:addressRegion'],
+          country: contentLocation['schema:addressCountry'],
         };
-        const reporterId = knowledgeAsset['prov:wasAttributedTo']?.['@id'];
+        const reporterId = knowledgeAsset['author']?.['@id'];
         
         await NewsReport.create({
           headline,
           ual: result.ual!,
           datasetRoot: result.datasetRoot || undefined,
-          publishedAt: new Date(knowledgeAsset['schema:datePublished'] || new Date()),
+          publishedAt: new Date(knowledgeAsset['datePublished'] || new Date()),
           reporterId: reporterId || undefined,
           description,
           mediaUrl,
