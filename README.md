@@ -35,15 +35,24 @@ yarn install
 Create a `.env.local` file in the root directory:
 
 ```env
-# OriginTrail DKG Edge Node URL
-# Use a public node or your own instance
-NEXT_PUBLIC_DKG_NODE_URL=http://localhost:8900
+# OriginTrail DKG Configuration (Required for publishing)
+DKG_PRIVATE_KEY=your_private_key_here
+DKG_NODE_ENDPOINT=https://v6-pegasus-node-03.origin-trail.network
+DKG_NODE_PORT=8900
+DKG_BLOCKCHAIN_NAME=otp:20430
+
+# MongoDB (Optional - for storing published reports)
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/JournalistNewsVerify
 
 # Arweave Gateway URL
 NEXT_PUBLIC_ARWEAVE_GATEWAY=https://arweave.net
 ```
 
-**Note:** For the hackathon, if you don't have a DKG node running, the app will return mock responses so you can test the full workflow.
+**Important Notes:**
+- `DKG_PRIVATE_KEY`: Your wallet's private key (without 0x prefix) - **Required for publishing**
+- `DKG_NODE_ENDPOINT`: Public DKG node endpoint (default provided)
+- `MONGODB_URI`: Optional - only needed if you want to store published reports in MongoDB
+- `MONGODB_URI` should end with the database name (e.g., `/JournalistNewsVerify`)
 
 ### Run Development Server
 
@@ -119,12 +128,40 @@ The generated Knowledge Assets follow this structure:
 - **Next.js 14** (App Router) - React framework
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
-- **OriginTrail DKG** - Decentralized Knowledge Graph
+- **OriginTrail DKG** - Decentralized Knowledge Graph (via dkg.js)
+- **MongoDB** (Optional) - Database for storing published reports
 - **Web Crypto API** - SHA-256 hashing
 - **Lucide React** - Icons
+- **OpenStreetMap Nominatim** - Reverse geocoding for location names
+
+## DKG Publishing
+
+The app publishes Knowledge Assets to the OriginTrail DKG using the `dkg.js` SDK. Publishing happens through the `/api/publish` API route which:
+
+1. Validates the Knowledge Asset structure
+2. Connects to the DKG node using your private key
+3. Publishes the asset to the blockchain
+4. Returns the UAL (Uniform Asset Locator)
+5. Optionally saves to MongoDB for indexing
+
+### Getting a Private Key
+
+You need a wallet with TRAC tokens on the OriginTrail testnet to publish. You can:
+- Use an existing wallet
+- Create a new wallet and fund it with testnet TRAC
+- The private key should be the hex string without the `0x` prefix
+
+### Publishing Flow
+
+1. User uploads media and fills in report details
+2. App generates JSON-LD Knowledge Asset
+3. Frontend calls `/api/publish` with the Knowledge Asset
+4. API route uses `dkg.js` to publish to DKG
+5. Returns UAL which is displayed to the user
 
 ## Next Steps (Future Enhancements)
 
+- [x] DKG publishing with public node
 - [ ] Verification system with token staking
 - [ ] Multi-file media support
 - [ ] Real Arweave integration

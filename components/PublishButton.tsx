@@ -5,13 +5,19 @@ import { Upload, Loader2, CheckCircle2 } from 'lucide-react'
 import { NewsReport } from '@/types'
 import { computeFileHash } from '@/lib/hash'
 import { uploadToArweave } from '@/lib/arweave'
-import { createKnowledgeAsset, publishToDKG } from '@/lib/dkg'
+import { createKnowledgeAsset } from '@/lib/dkg'
 
 interface PublishButtonProps {
   report: NewsReport
   onSuccess: (ual: string) => void
   isPublishing: boolean
   onPublishingChange: (value: boolean) => void
+}
+
+interface PublishResponse {
+  success: boolean
+  ual?: string
+  error?: string
 }
 
 export function PublishButton({ report, onSuccess, isPublishing, onPublishingChange }: PublishButtonProps) {
@@ -46,11 +52,26 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
         arweaveUrl,
         hash,
         report.location,
-        report.timestamp || new Date().toISOString()
+        report.timestamp || new Date().toISOString(),
+        report.reporterId
       )
 
       setProgress('Publishing to OriginTrail DKG...')
-      const result = await publishToDKG(knowledgeAsset)
+      
+      // Use API route for publishing
+      const response = await fetch('/api/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(knowledgeAsset),
+      })
+
+      const result: PublishResponse = await response.json()
+      
+      if (!result.success || !result.ual) {
+        throw new Error(result.error || 'Failed to publish to DKG')
+      }
       
       setProgress('Success!')
       onSuccess(result.ual)
