@@ -1,8 +1,8 @@
 // Script to publish Knowledge Assets to DKG
 // Called from Next.js API route via child process
+// Note: dotenv is not used - environment variables are passed from the API route
 
 import DKG from './index.js';
-import 'dotenv/config';
 
 const OT_NODE_HOSTNAME = process.env.DKG_NODE_ENDPOINT || 'https://v6-pegasus-node-03.origin-trail.network';
 const OT_NODE_PORT = process.env.DKG_NODE_PORT || '8900';
