@@ -103,12 +103,21 @@ export async function POST(request: NextRequest) {
       
       console.log('Using script path:', scriptPath);
       
+      // Determine the project root and node_modules path
+      const projectRoot = process.cwd();
+      const nodeModulesPath = path.join(projectRoot, 'node_modules');
+      
+      console.log('Project root:', projectRoot);
+      console.log('Node modules path:', nodeModulesPath);
+      
       // Run the publish script as a child process
+      // Use project root as CWD so Node.js finds packages in root node_modules
       const publishResult = await new Promise<any>((resolve, reject) => {
         const child = spawn('node', [scriptPath!], {
-          cwd: path.dirname(scriptPath!),
+          cwd: projectRoot, // Use project root, not dkg-publish folder
           env: {
             ...process.env,
+            NODE_PATH: nodeModulesPath, // Help Node.js find packages
             DKG_NODE_ENDPOINT: nodeEndpoint,
             DKG_NODE_PORT: nodePort,
             DKG_BLOCKCHAIN_NAME: blockchainName,
