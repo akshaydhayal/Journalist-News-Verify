@@ -1,0 +1,4 @@
+# Don't ignore dkg-publish - it's needed for the API route
+!dkg-publish
+
+
