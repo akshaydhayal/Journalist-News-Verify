@@ -1,380 +1,266 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Upload, MapPin, Clock, FileText, Image as ImageIcon, Video, X, Loader2, User } from 'lucide-react'
-import { LocationCapture } from '@/components/LocationCapture'
-import { PublishButton } from '@/components/PublishButton'
-import { SuccessModal } from '@/components/SuccessModal'
-import { JsonLdPreview } from '@/components/JsonLdPreview'
-import { NewsReport, MediaFile, LocationData, JournalistInfo } from '@/types'
+import { MapPin, Clock, User, ExternalLink, Shield, Search, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 
-export default function Home() {
-  const [report, setReport] = useState<Partial<NewsReport>>({
-    timestamp: new Date().toISOString(),
-  })
-  const [isPublishing, setIsPublishing] = useState(false)
-  const [publishedUAL, setPublishedUAL] = useState<string | null>(null)
-  const [dragActive, setDragActive] = useState(false)
-
-  // Check if form is complete
-  const isFormComplete = !!(
-    report.headline?.trim() &&
-    report.description?.trim() &&
-    report.media &&
-    report.media.length > 0 &&
-    report.location
-  )
-
-  const handleFiles = (files: FileList | null) => {
-    if (!files) return
-
-    const fileArray = Array.from(files).filter(file => 
-      file.type.startsWith('image/') || file.type.startsWith('video/')
-    )
-
-    const newMedia: MediaFile[] = fileArray.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }))
-
-    setReport(prev => ({
-      ...prev,
-      media: [...(prev.media || []), ...newMedia],
-    }))
+interface NewsItem {
+  _id: string
+  headline: string
+  description: string
+  ual: string
+  mediaUrl: string
+  location: {
+    latitude: number
+    longitude: number
+    displayName?: string
+    city?: string
+    state?: string
+    country?: string
   }
+  journalist?: {
+    name?: string
+    email?: string
+    organization?: string
+  }
+  publishedAt: string
+  createdAt: string
+}
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
-    } else if (e.type === 'dragleave') {
-      setDragActive(false)
+export default function NewsPage() {
+  const [news, setNews] = useState<NewsItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+
+  useEffect(() => {
+    fetchNews()
+  }, [])
+
+  const fetchNews = async (search?: string) => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const params = new URLSearchParams()
+      if (search) {
+        params.append('search', search)
+      }
+      params.append('limit', '50')
+      
+      const response = await fetch(`/api/news?${params.toString()}`)
+      const data = await response.json()
+      
+      if (data.success) {
+        setNews(data.news || [])
+      } else {
+        setError(data.error || 'Failed to load news')
+      }
+    } catch (err) {
+      setError('Failed to fetch news')
+      console.error('Error:', err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    handleFiles(e.dataTransfer.files)
+    fetchNews(searchInput)
+    setSearchQuery(searchInput)
   }
 
-  const removeMedia = (index: number) => {
-    setReport(prev => {
-      const media = prev.media || []
-      URL.revokeObjectURL(media[index].preview)
-      return {
-        ...prev,
-        media: media.filter((_, i) => i !== index),
-      }
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     })
   }
 
-  const handleLocationCaptured = (location: LocationData) => {
-    setReport(prev => ({ ...prev, location }))
-  }
-
-  const handlePublishSuccess = (ual: string) => {
-    setPublishedUAL(ual)
-  }
-
-  const handleReset = () => {
-    // Cleanup media URLs
-    report.media?.forEach(m => URL.revokeObjectURL(m.preview))
-    setReport({ timestamp: new Date().toISOString() })
-    setPublishedUAL(null)
+  const getLocationDisplay = (location: NewsItem['location']) => {
+    if (location.displayName) return location.displayName
+    if (location.city && location.state) return `${location.city}, ${location.state}`
+    if (location.city) return location.city
+    if (location.country) return location.country
+    return `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
   }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
-            Journalist News Verify
+            News Feed
           </h1>
           <p className="text-blue-200">
-            Publish verifiable news reports on the OriginTrail DKG
+            Browse verifiable news reports published on the OriginTrail DKG
           </p>
         </div>
 
-        {/* Main Form Card */}
-        <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
-          
-          {/* Section 1: Journalist Details */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <User className="w-5 h-5 text-primary-600" />
-              Journalist Information
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="journalist-name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="journalist-name"
-                  value={report.journalist?.name || ''}
-                  onChange={(e) => setReport(prev => ({
-                    ...prev,
-                    journalist: { ...prev.journalist, name: e.target.value }
-                  }))}
-                  placeholder="Your full name"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                />
-              </div>
 
-              <div>
-                <label htmlFor="journalist-email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="journalist-email"
-                  value={report.journalist?.email || ''}
-                  onChange={(e) => setReport(prev => ({
-                    ...prev,
-                    journalist: { ...prev.journalist, email: e.target.value }
-                  }))}
-                  placeholder="your.email@example.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="journalist-organization" className="block text-sm font-medium text-gray-700 mb-1">
-                  Organization
-                </label>
-                <input
-                  type="text"
-                  id="journalist-organization"
-                  value={report.journalist?.organization || ''}
-                  onChange={(e) => setReport(prev => ({
-                    ...prev,
-                    journalist: { ...prev.journalist, organization: e.target.value }
-                  }))}
-                  placeholder="News organization or freelance"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="journalist-contact" className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact (Optional)
-                </label>
-                <input
-                  type="text"
-                  id="journalist-contact"
-                  value={report.journalist?.contact || ''}
-                  onChange={(e) => setReport(prev => ({
-                    ...prev,
-                    journalist: { ...prev.journalist, contact: e.target.value }
-                  }))}
-                  placeholder="Phone or social media handle"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* Divider */}
-          <hr className="border-gray-200" />
-
-          {/* Section 2: Report Details (Title & Description) */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary-600" />
-              Report Details
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="headline" className="block text-sm font-medium text-gray-700 mb-1">
-                  Headline *
-                </label>
-                <input
-                  type="text"
-                  id="headline"
-                  value={report.headline || ''}
-                  onChange={(e) => setReport(prev => ({ ...prev, headline: e.target.value }))}
-                  placeholder="Enter a clear, concise headline"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                  maxLength={200}
-                />
-                <p className="text-xs text-gray-500 mt-1 text-right">{(report.headline || '').length}/200</p>
-              </div>
-
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                  Description *
-                </label>
-                <textarea
-                  id="description"
-                  value={report.description || ''}
-                  onChange={(e) => setReport(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe what you witnessed. Include relevant details, context, and observations."
-                  rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition resize-none"
-                  maxLength={2000}
-                />
-                <p className="text-xs text-gray-500 mt-1 text-right">{(report.description || '').length}/2000</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Divider */}
-          <hr className="border-gray-200" />
-
-          {/* Section 3: Media Upload */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary-600" />
-              Upload Evidence
-            </h2>
-            
-            <div
-              className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
-                dragActive
-                  ? 'border-primary-500 bg-primary-50'
-                  : 'border-gray-300 hover:border-primary-400 bg-gray-50'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
+        {/* Search Bar */}
+        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg p-4 mb-6">
+          <form onSubmit={handleSearch} className="flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
-                type="file"
-                multiple
-                accept="image/*,video/*"
-                onChange={(e) => handleFiles(e.target.files)}
-                className="hidden"
-                id="media-upload"
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search news by headline or description..."
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
-              <label htmlFor="media-upload" className="cursor-pointer">
-                <Upload className="w-10 h-10 mx-auto mb-3 text-gray-400" />
-                <p className="text-gray-600 mb-1">
-                  Drag and drop or{' '}
-                  <span className="text-primary-600 font-medium">browse</span>
-                </p>
-                <p className="text-xs text-gray-500">
-                  Photos and videos (JPG, PNG, MP4)
-                </p>
-              </label>
             </div>
+            <button
+              type="submit"
+              className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+            >
+              Search
+            </button>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('')
+                  setSearchQuery('')
+                  fetchNews()
+                }}
+                className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </form>
+        </div>
 
-            {/* Media Previews */}
-            {report.media && report.media.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
-                {report.media.map((media, index) => (
-                  <div key={index} className="relative group aspect-video rounded-lg overflow-hidden bg-gray-100">
-                    {media.file.type.startsWith('image/') ? (
-                      <img
-                        src={media.preview}
-                        alt={`Upload ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <video
-                        src={media.preview}
-                        className="w-full h-full object-cover"
-                      />
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-blue-300 animate-spin" />
+            <span className="ml-3 text-blue-200">Loading news...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg">
+            <p className="font-medium">Error</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* News Grid */}
+        {!loading && !error && (
+          <>
+            {news.length === 0 ? (
+              <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg p-12 text-center">
+                <p className="text-gray-600 text-lg">No news reports found</p>
+                {searchQuery && (
+                  <p className="text-gray-500 mt-2">Try a different search term</p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {news.map((item) => (
+                  <article
+                    key={item._id}
+                    className="bg-white/95 backdrop-blur rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 group"
+                  >
+                    {/* Media */}
+                    {item.mediaUrl && (
+                      <div className="relative aspect-video bg-gray-200 overflow-hidden">
+                        {item.mediaUrl.startsWith('http') ? (
+                          <img
+                            src={item.mediaUrl}
+                            alt={item.headline}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none'
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <Shield className="w-12 h-12" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                          <Shield className="w-3 h-3" />
+                          Verified
+                        </div>
+                      </div>
                     )}
-                    <button
-                      onClick={() => removeMedia(index)}
-                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                      {media.file.type.startsWith('image/') ? (
-                        <ImageIcon className="w-3 h-3" />
-                      ) : (
-                        <Video className="w-3 h-3" />
-                      )}
-                      {(media.file.size / 1024 / 1024).toFixed(1)} MB
+
+                    {/* Content */}
+                    <div className="p-5">
+                      <h2 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                        {item.headline}
+                      </h2>
+                      
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                        {item.description}
+                      </p>
+
+                      {/* Metadata */}
+                      <div className="space-y-2 mb-4">
+                        {item.location && (
+                          <div className="flex items-start gap-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-600" />
+                            <span className="line-clamp-1">{getLocationDisplay(item.location)}</span>
+                          </div>
+                        )}
+
+                        {item.journalist?.name && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <User className="w-4 h-4 text-primary-600" />
+                            <span>
+                              {item.journalist.name}
+                              {item.journalist.organization && (
+                                <span className="text-gray-500"> • {item.journalist.organization}</span>
+                              )}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <Clock className="w-3 h-3" />
+                          <span>{formatDate(item.publishedAt)}</span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-4 border-t border-gray-200">
+                        <a
+                          href={`https://dkg-testnet.origintrail.io/explore?ual=${encodeURIComponent(item.ual)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Verify on DKG
+                        </a>
+                      </div>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
             )}
-          </section>
 
-          {/* Divider */}
-          <hr className="border-gray-200" />
-
-          {/* Section 4: Location */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary-600" />
-              Location
-            </h2>
-            <LocationCapture onLocationCaptured={handleLocationCaptured} />
-          </section>
-
-          {/* Divider */}
-          <hr className="border-gray-200" />
-
-          {/* Section 5: Timestamp */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary-600" />
-              Timestamp
-            </h2>
-            <div className="bg-gray-50 rounded-lg px-4 py-3 text-gray-700">
-              {report.timestamp ? new Date(report.timestamp).toLocaleString() : 'Not set'}
-            </div>
-          </section>
-
-          {/* JSON-LD Preview (only show when form has data) */}
-          {(report.headline || report.description) && report.media && report.media.length > 0 && report.location && (
-            <>
-              <hr className="border-gray-200" />
-              <section>
-                <JsonLdPreview report={report} />
-              </section>
-            </>
-          )}
-
-          {/* Divider */}
-          <hr className="border-gray-200" />
-
-          {/* Publish Section */}
-          <section>
-            {!isFormComplete && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
-                <p className="text-sm text-amber-800">
-                  <strong>Required:</strong> Please fill in all fields to publish.
-                  {!report.headline?.trim() && ' • Add headline'}
-                  {!report.description?.trim() && ' • Add description'}
-                  {!report.media?.length && ' • Add media'}
-                  {!report.location && ' • Allow location access'}
-                </p>
+            {/* Results Count */}
+            {searchQuery && news.length > 0 && (
+              <div className="mt-6 text-center text-blue-200 text-sm">
+                Found {news.length} result{news.length !== 1 ? 's' : ''} for "{searchQuery}"
               </div>
             )}
-
-            <PublishButton 
-              report={report as NewsReport}
-              onSuccess={handlePublishSuccess}
-              isPublishing={isPublishing}
-              onPublishingChange={setIsPublishing}
-            />
-          </section>
-        </div>
-
-        {/* Footer */}
-        <p className="text-center text-blue-200/60 text-sm mt-6">
-          Powered by OriginTrail DKG • Decentralized Knowledge Graph
-        </p>
-
-        {/* Success Modal */}
-        {publishedUAL && (
-          <SuccessModal ual={publishedUAL} onClose={handleReset} />
+          </>
         )}
       </div>
     </main>
   )
 }
+

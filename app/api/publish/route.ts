@@ -161,6 +161,13 @@ export async function POST(request: NextRequest) {
           country: contentLocation['schema:addressCountry'],
         };
         const reporterId = knowledgeAsset['author']?.['@id'];
+        const author = knowledgeAsset['author'] || {};
+        const journalist = {
+          name: author['name'],
+          email: author['email'],
+          organization: author['affiliation']?.['name'],
+          contact: undefined, // Contact not stored in JSON-LD
+        };
         
         await NewsReport.create({
           headline,
@@ -172,6 +179,7 @@ export async function POST(request: NextRequest) {
           mediaUrl,
           mediaHash,
           location,
+          journalist: Object.values(journalist).some(v => v) ? journalist : undefined,
           jsonld: knowledgeAsset,
         });
         

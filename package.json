@@ -15,7 +15,8 @@
     "date-fns": "^2.30.0",
     "lucide-react": "^0.294.0",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^2.0.0"
+    "tailwind-merge": "^2.0.0",
+    "mongoose": "^8.20.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

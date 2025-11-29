@@ -19,6 +19,12 @@ export interface INewsReport extends Document {
     state?: string;
     country?: string;
   };
+  journalist?: {
+    name?: string;
+    email?: string;
+    organization?: string;
+    contact?: string;
+  };
   jsonld: any;
   createdAt: Date;
   updatedAt: Date;
@@ -67,6 +73,12 @@ const NewsReportSchema = new Schema<INewsReport>(
       city: String,
       state: String,
       country: String,
+    },
+    journalist: {
+      name: String,
+      email: String,
+      organization: String,
+      contact: String,
     },
     jsonld: {
       type: Schema.Types.Mixed,

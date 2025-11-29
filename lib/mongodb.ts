@@ -56,7 +56,7 @@ async function connectDB() {
     
     // Append database name if not present
     if (!hasDatabase) {
-      connectionString = connectionString + '/JournalistNewsVerify';
+      connectionString = connectionString + '/journalistNews';
     }
 
     console.log('Connecting to MongoDB:', connectionString.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Log with masked credentials

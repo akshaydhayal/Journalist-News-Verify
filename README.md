@@ -45,8 +45,8 @@ DKG_NODE_ENDPOINT=https://v6-pegasus-node-03.origin-trail.network
 DKG_NODE_PORT=8900
 DKG_BLOCKCHAIN_NAME=otp:20430
 
-# MongoDB (Optional - for storing published reports)
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/JournalistNewsVerify
+# MongoDB (Required for news feed - stores published reports)
+MONGODB_URI=mongodb+srv://akshay:akshay@cluster0.jy7weei.mongodb.net/journalistNews
 
 # Arweave Gateway URL
 NEXT_PUBLIC_ARWEAVE_GATEWAY=https://arweave.net
