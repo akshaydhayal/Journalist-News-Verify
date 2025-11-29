@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "postinstall": "cd dkg-publish && npm install --legacy-peer-deps || true"
+    "lint": "next lint"
   },
   "dependencies": {
     "next": "^14.0.0",
@@ -18,12 +17,8 @@
     "clsx": "^2.0.0",
     "tailwind-merge": "^2.0.0",
     "mongoose": "^8.20.1",
-    "axios": "^1.6.0",
-    "ethers": "^6.9.0",
-    "jsonld": "^8.3.1",
-    "web3": "^4.3.0",
-    "assertion-tools": "^1.0.5",
-    "dotenv": "^16.3.1"
+    "dkg.js": "^8.2.0",
+    "ethers": "^5.7.2"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
@@ -35,6 +30,9 @@
     "autoprefixer": "^10.4.0",
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.0.0"
+  },
+  "overrides": {
+    "ethers": "^5.7.2"
   }
 }
 

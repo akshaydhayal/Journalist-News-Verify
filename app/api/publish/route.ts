@@ -1,5 +1,5 @@
 // API route for publishing News Reports to DKG
-// Uses the local dkg-publish module
+// Uses the dkg.js npm package directly
 
 // Force Node.js runtime for this route
 export const runtime = 'nodejs';
@@ -9,9 +9,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { KnowledgeAsset } from '@/types';
 import connectDB from '@/lib/mongodb';
 import NewsReport from '@/models/NewsReport';
-import path from 'path';
-import fs from 'fs';
-import { spawn } from 'child_process';
 
 // Type for the publish result
 interface DKGPublishResult {
@@ -54,121 +51,49 @@ export async function POST(request: NextRequest) {
     let result: DKGPublishResult;
     
     try {
-      // Import DKG client directly (works in both localhost and Vercel)
-      // Use dynamic import with proper path resolution for ES modules
-      const dkgPublishPath = path.resolve(process.cwd(), 'dkg-publish', 'index.js');
-      
       console.log('Publishing to DKG...');
       console.log('Node endpoint:', nodeEndpoint);
-      console.log('DKG path:', dkgPublishPath);
-      console.log('Current working directory:', process.cwd());
+      console.log('Blockchain:', blockchainName);
       
-      // Use child process to run dkg-publish script
-      // This works reliably with ES modules in both localhost and Vercel
+      // Dynamic import of dkg.js npm package
+      const DKG = (await import('dkg.js')).default;
       
-      // Detect environment
-      const isVercel = process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
-      console.log('Environment:', isVercel ? 'Vercel/Lambda' : 'Local');
+      // Create DKG client
+      const DkgClient = new DKG({
+        endpoint: nodeEndpoint,
+        port: nodePort,
+        blockchain: {
+          name: blockchainName,
+          privateKey: privateKey,
+        },
+        maxNumberOfRetries: 300,
+        frequency: 2,
+        contentType: 'all',
+        nodeApiVersion: '/v1',
+      });
       
-      // Find the script path
-      const possiblePaths = isVercel
-        ? ['/var/task/dkg-publish/publish-api.js', path.join(process.cwd(), 'dkg-publish', 'publish-api.js')]
-        : [path.resolve(process.cwd(), 'dkg-publish', 'publish-api.js')];
+      // Check node info first
+      console.log('Checking node info...');
+      const nodeInfo = await DkgClient.node.info();
+      console.log('Node info:', JSON.stringify(nodeInfo));
       
-      let scriptPath: string | null = null;
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          scriptPath = p;
-          break;
-        }
-      }
+      // Publish to DKG
+      console.log('Creating asset on DKG...');
+      const content = {
+        public: knowledgeAsset,
+      };
       
-      if (!scriptPath) {
-        const cwdContents = fs.existsSync(process.cwd()) 
-          ? fs.readdirSync(process.cwd()).slice(0, 20).join(', ')
-          : 'CWD not accessible';
-        
-        // Check dkg-publish folder contents
-        const dkgFolder = path.join(process.cwd(), 'dkg-publish');
-        const dkgContents = fs.existsSync(dkgFolder)
-          ? fs.readdirSync(dkgFolder).join(', ')
-          : 'dkg-publish folder not found';
-        
-        throw new Error(
-          `DKG publish script not found. Tried: ${possiblePaths.join(', ')}. ` +
-          `CWD: ${process.cwd()}. CWD Contents: ${cwdContents}. ` +
-          `dkg-publish folder contents: ${dkgContents}`
-        );
-      }
-      
-      console.log('Using script path:', scriptPath);
-      
-      // Determine the project root and node_modules path
-      const projectRoot = process.cwd();
-      const nodeModulesPath = path.join(projectRoot, 'node_modules');
-      
-      console.log('Project root:', projectRoot);
-      console.log('Node modules path:', nodeModulesPath);
-      
-      // Run the publish script as a child process
-      // Use project root as CWD so Node.js finds packages in root node_modules
-      const publishResult = await new Promise<any>((resolve, reject) => {
-        const child = spawn('node', [scriptPath!], {
-          cwd: projectRoot, // Use project root, not dkg-publish folder
-          env: {
-            ...process.env,
-            NODE_PATH: nodeModulesPath, // Help Node.js find packages
-            DKG_NODE_ENDPOINT: nodeEndpoint,
-            DKG_NODE_PORT: nodePort,
-            DKG_BLOCKCHAIN_NAME: blockchainName,
-            PRIVATE_KEY: privateKey,
-          },
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-        
-        let stdout = '';
-        let stderr = '';
-        
-        child.stdout.on('data', (data) => {
-          stdout += data.toString();
-        });
-        
-        child.stderr.on('data', (data) => {
-          stderr += data.toString();
-          console.log('DKG stderr:', data.toString());
-        });
-        
-        child.on('close', (code) => {
-          console.log('Child process exited with code:', code);
-          console.log('stdout:', stdout);
-          if (stderr) console.log('stderr:', stderr);
-          
-          try {
-            const result = JSON.parse(stdout.trim());
-            resolve(result);
-          } catch (e) {
-            reject(new Error(`Failed to parse output. stdout: ${stdout}. stderr: ${stderr}`));
-          }
-        });
-        
-        child.on('error', (err) => {
-          reject(new Error(`Failed to spawn child process: ${err.message}`));
-        });
-        
-        // Send the knowledge asset as JSON to stdin
-        child.stdin.write(JSON.stringify(knowledgeAsset));
-        child.stdin.end();
+      const createResult = await DkgClient.asset.create(content, {
+        epochsNum: 2,
+        minimumNumberOfFinalizationConfirmations: 3,
+        minimumNumberOfNodeReplications: 1,
       });
       
       console.log('DKG publish completed');
-      console.log('Result:', JSON.stringify(publishResult, null, 2));
+      console.log('Result:', JSON.stringify(createResult, null, 2));
       
-      if (!publishResult.success) {
-        throw new Error(publishResult.error || 'DKG publish failed');
-      }
-      
-      const ual = publishResult.UAL;
-      const datasetRoot = publishResult.datasetRoot || null;
+      const ual = createResult.UAL;
+      const datasetRoot = createResult.datasetRoot || null;
       
       if (!ual) {
         throw new Error('DKG publish succeeded but no UAL returned');
@@ -178,7 +103,7 @@ export async function POST(request: NextRequest) {
         success: true,
         ual: ual,
         datasetRoot: datasetRoot || undefined,
-        operation: publishResult.operation || undefined,
+        operation: createResult.operation || undefined,
       };
     } catch (dkgError) {
       console.error('DKG publish error:', dkgError);
@@ -264,5 +189,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
