@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Upload, Loader2, CheckCircle2 } from 'lucide-react'
+import { Upload, Loader2 } from 'lucide-react'
 import { NewsReport } from '@/types'
 import { computeFileHash } from '@/lib/hash'
 import { uploadToArweave } from '@/lib/arweave'
@@ -20,6 +20,12 @@ interface PublishResponse {
   error?: string
 }
 
+interface UploadedMedia {
+  url: string
+  hash: string
+  type: 'image' | 'video'
+}
+
 export function PublishButton({ report, onSuccess, isPublishing, onPublishingChange }: PublishButtonProps) {
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<string>('')
@@ -35,37 +41,55 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
     setProgress('Processing media files...')
 
     try {
-      // Process the first media file (for simplicity, we'll use the first one)
-      // In production, you might want to handle multiple files
-      const mediaFile = report.media[0]
+      // Upload all media files
+      const uploadedMedia: UploadedMedia[] = []
       
-      setProgress('Computing file hash...')
-      const hash = await computeFileHash(mediaFile.file)
+      for (let i = 0; i < report.media.length; i++) {
+        const mediaFile = report.media[i]
+        const isVideo = mediaFile.file.type.startsWith('video/')
+        
+        setProgress(`Computing hash for file ${i + 1} of ${report.media.length}...`)
+        const hash = await computeFileHash(mediaFile.file)
+        
+        setProgress(`Uploading file ${i + 1} of ${report.media.length} to cloud...`)
+        const url = await uploadToArweave(mediaFile.file)
+        
+        uploadedMedia.push({
+          url,
+          hash,
+          type: isVideo ? 'video' : 'image'
+        })
+      }
       
-      setProgress('Uploading media to cloud...')
-      const mediaUrl = await uploadToArweave(mediaFile.file)
+      // Use the first media for the primary fields (backwards compatibility)
+      const primaryMedia = uploadedMedia[0]
       
       setProgress('Creating Knowledge Asset...')
       const knowledgeAsset = createKnowledgeAsset(
         report.headline,
         report.description,
-        mediaUrl,
-        hash,
+        primaryMedia.url,
+        primaryMedia.hash,
         report.location,
         report.timestamp || new Date().toISOString(),
         report.reporterId,
-        report.journalist
+        report.journalist,
+        uploadedMedia // Pass all media items for associatedMedia array
       )
 
       setProgress('Publishing to OriginTrail DKG...')
       
       // Use API route for publishing
+      // Send mediaItems separately so they can be saved to DB but not published to DKG
       const response = await fetch('/api/publish', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(knowledgeAsset),
+        body: JSON.stringify({
+          knowledgeAsset,
+          mediaItems: uploadedMedia, // Send separately for MongoDB storage
+        }),
       })
 
       const result: PublishResponse = await response.json()
@@ -128,4 +152,3 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
     </div>
   )
 }
-

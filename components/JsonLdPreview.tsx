@@ -18,28 +18,35 @@ export function JsonLdPreview({ report }: JsonLdPreviewProps) {
     // Show preview if we have minimum required fields (headline, description, location, media)
     // Journalist info is optional but will be included if present
     if (report.headline && report.description && report.location && report.media && report.media.length > 0) {
-      // Determine media format from file
-      const mediaFile = report.media[0]
-      const mediaFormat = mediaFile.file.type || 'application/octet-stream'
-      const isImage = mediaFile.file.type.startsWith('image/')
-      const isVideo = mediaFile.file.type.startsWith('video/')
-      const fileExtension = isImage 
-        ? (mediaFile.file.type.includes('png') ? '.png' : '.jpg')
-        : isVideo 
-        ? '.mp4' 
-        : ''
+      // Build preview media items for all uploaded files
+      const previewMediaItems = report.media.map((mediaFile, index) => {
+        const isVideo = mediaFile.file.type.startsWith('video/')
+        const isImage = mediaFile.file.type.startsWith('image/')
+        const fileExtension = isImage 
+          ? (mediaFile.file.type.includes('png') ? '.png' : '.jpg')
+          : isVideo 
+          ? '.mp4' 
+          : ''
+        
+        return {
+          url: `cloudinary://placeholder/media_${index + 1}${fileExtension}`,
+          hash: '0x...',
+          type: (isVideo ? 'video' : 'image') as 'image' | 'video'
+        }
+      })
 
       // Generate preview Knowledge Asset with placeholder values
       // In the actual publish, these will be replaced with real hash and URL
       const previewAsset = createKnowledgeAsset(
         report.headline,
         report.description,
-        `ipfs://Qm.../media${fileExtension}`, // Placeholder URL - will be replaced with Arweave URL
-        '0x...', // Placeholder hash - will be computed during publish
+        previewMediaItems[0].url, // Primary URL - will be replaced with Cloudinary URL
+        previewMediaItems[0].hash, // Placeholder hash - will be computed during publish
         report.location || { latitude: 0, longitude: 0 }, // Fallback if location not set
         report.timestamp || new Date().toISOString(),
         report.reporterId,
-        report.journalist // Include journalist info in preview
+        report.journalist, // Include journalist info in preview
+        previewMediaItems // Include all media items in preview
       )
 
       // Format JSON with proper indentation
@@ -100,7 +107,7 @@ export function JsonLdPreview({ report }: JsonLdPreviewProps) {
         <div className="space-y-2">
           <div className="px-4 py-2 bg-yellow-50 border-l-4 border-yellow-400">
             <p className="text-xs text-yellow-800">
-              <strong>Note:</strong> The <code className="bg-yellow-100 px-1 rounded">url</code>, <code className="bg-yellow-100 px-1 rounded">contentUrl</code>, and <code className="bg-yellow-100 px-1 rounded">sha256</code> values shown as placeholders will be replaced with actual Arweave URL and computed hash during publishing.
+              <strong>Note:</strong> The <code className="bg-yellow-100 px-1 rounded">url</code>, <code className="bg-yellow-100 px-1 rounded">contentUrl</code>, and <code className="bg-yellow-100 px-1 rounded">sha256</code> values shown as placeholders will be replaced with actual Cloudinary URLs and computed hashes during publishing.
             </p>
           </div>
           <div className="p-4 bg-gray-900 text-gray-100 overflow-x-auto max-h-96 overflow-y-auto">

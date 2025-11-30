@@ -2,6 +2,12 @@
 
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface MediaItem {
+  url: string;
+  hash: string;
+  type: 'image' | 'video';
+}
+
 export interface INewsReport extends Document {
   headline: string;
   ual: string;
@@ -9,8 +15,9 @@ export interface INewsReport extends Document {
   publishedAt: Date;
   reporterId?: string;
   description: string;
-  mediaUrl: string;
-  mediaHash: string;
+  mediaUrl: string; // Primary media URL (first one) - for backwards compatibility
+  mediaHash: string; // Primary media hash (first one) - for backwards compatibility
+  mediaItems: MediaItem[]; // All media items
   location: {
     latitude: number;
     longitude: number;
@@ -66,6 +73,11 @@ const NewsReportSchema = new Schema<INewsReport>(
       type: String,
       required: true,
     },
+    mediaItems: [{
+      url: { type: String, required: true },
+      hash: { type: String, required: true },
+      type: { type: String, enum: ['image', 'video'], default: 'image' },
+    }],
     location: {
       latitude: { type: Number, required: true },
       longitude: { type: Number, required: true },

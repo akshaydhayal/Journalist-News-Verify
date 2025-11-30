@@ -15,9 +15,40 @@ interface DKGPublishResult {
   operation?: any;
 }
 
+interface MediaItem {
+  url: string;
+  hash: string;
+  type: 'image' | 'video';
+}
+
+interface PublishRequestBody {
+  knowledgeAsset?: KnowledgeAsset;
+  mediaItems?: MediaItem[];
+  // Support old format where knowledgeAsset is sent directly
+  '@context'?: string;
+  '@type'?: string;
+  '@id'?: string;
+  headline?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const knowledgeAsset: KnowledgeAsset = await request.json();
+    const body: PublishRequestBody = await request.json();
+    
+    // Support both new format (with knowledgeAsset wrapper) and old format (direct KA)
+    const knowledgeAsset: KnowledgeAsset = body.knowledgeAsset || body as unknown as KnowledgeAsset;
+    const mediaItems: MediaItem[] = body.mediaItems || [];
+    
+    console.log('📥 Received request:');
+    console.log('  - body.mediaItems:', body.mediaItems ? body.mediaItems.length : 'undefined');
+    console.log('  - mediaItems array length:', mediaItems.length);
+    if (mediaItems.length > 0) {
+      console.log('  - First mediaItem:', JSON.stringify(mediaItems[0], null, 2));
+    }
+    console.log('  - Knowledge Asset associatedMedia:', Array.isArray(knowledgeAsset['associatedMedia']) ? knowledgeAsset['associatedMedia'].length : 'not array');
+    if (Array.isArray(knowledgeAsset['associatedMedia'])) {
+      console.log('  - First associatedMedia:', JSON.stringify(knowledgeAsset['associatedMedia'][0], null, 2));
+    }
     
     // Validate knowledge asset structure
     if (!knowledgeAsset['@context'] || !knowledgeAsset['@type'] || !knowledgeAsset['@id'] || !knowledgeAsset['headline']) {
@@ -116,8 +147,57 @@ export async function POST(request: NextRequest) {
       
       const headline = knowledgeAsset['headline'] || knowledgeAsset['name'] || 'Untitled Report';
       const description = knowledgeAsset['description'] || '';
-      const mediaUrl = knowledgeAsset['url'] || knowledgeAsset['associatedMedia']?.['contentUrl'] || '';
-      const mediaHash = knowledgeAsset['associatedMedia']?.['sha256'] || '';
+      
+      // Extract media items - prioritize mediaItems from request body, fallback to associatedMedia
+      const associatedMedia = knowledgeAsset['associatedMedia'];
+      let mediaUrl = knowledgeAsset['url'] || '';
+      let mediaHash = '';
+      let dbMediaItems: Array<{ url: string; hash: string; type: 'image' | 'video' }> = [];
+      
+      // Always extract from associatedMedia array in JSON-LD (this is the source of truth)
+      if (Array.isArray(associatedMedia) && associatedMedia.length > 0) {
+        console.log('📦 Extracting from associatedMedia array:', associatedMedia.length);
+        dbMediaItems = associatedMedia.map((media: any) => {
+          const encodingFormat = media['encodingFormat'] || '';
+          const isVideo = encodingFormat.startsWith('video/');
+          return {
+            url: media['contentUrl'] || '',
+            hash: media['sha256'] || '',
+            type: (isVideo ? 'video' : 'image') as 'image' | 'video',
+          };
+        }).filter(item => item.url); // Filter out items without URLs
+        mediaUrl = dbMediaItems[0]?.url || '';
+        mediaHash = dbMediaItems[0]?.hash || '';
+      }
+      // Fallback: Use mediaItems from request body if associatedMedia is not available
+      else if (mediaItems && mediaItems.length > 0) {
+        console.log('✅ Using mediaItems from request body:', mediaItems.length);
+        dbMediaItems = [...mediaItems]; // Create a copy
+        mediaUrl = dbMediaItems[0]?.url || '';
+        mediaHash = dbMediaItems[0]?.hash || '';
+      } 
+      // Third priority: Single media object
+      else if (associatedMedia && !Array.isArray(associatedMedia)) {
+        console.log('📄 Extracting from single associatedMedia object');
+        const encodingFormat = associatedMedia['encodingFormat'] || '';
+        const isVideo = encodingFormat.startsWith('video/');
+        mediaUrl = associatedMedia['contentUrl'] || mediaUrl;
+        mediaHash = associatedMedia['sha256'] || '';
+        dbMediaItems = [{
+          url: mediaUrl,
+          hash: mediaHash,
+          type: isVideo ? 'video' : 'image',
+        }];
+      }
+      
+      console.log('💾 Final mediaItems to save to DB:', dbMediaItems.length);
+      if (dbMediaItems.length > 0) {
+        console.log('📸 Sample media item:', JSON.stringify(dbMediaItems[0], null, 2));
+        console.log('📸 All media items:', JSON.stringify(dbMediaItems, null, 2));
+      } else {
+        console.warn('⚠️ WARNING: No media items found to save!');
+      }
+      
       const contentLocation = knowledgeAsset['contentLocation'] || {};
       const location = {
         latitude: contentLocation['schema:latitude'] || 0,
@@ -136,7 +216,8 @@ export async function POST(request: NextRequest) {
         contact: undefined, // Contact not stored in JSON-LD
       };
       
-      await NewsReport.create({
+      // Build the news report data object
+      const newsReportData: any = {
         headline,
         ual: result.ual!,
         datasetRoot: result.datasetRoot || undefined,
@@ -148,9 +229,24 @@ export async function POST(request: NextRequest) {
         location,
         journalist: Object.values(journalist).some(v => v) ? journalist : undefined,
         jsonld: knowledgeAsset,
-      });
+      };
       
-      console.log('News Report saved to MongoDB:', result.ual);
+      // ALWAYS add mediaItems array (even if empty, but should have items)
+      newsReportData.mediaItems = dbMediaItems;
+      
+      console.log('📝 Creating NewsReport with:');
+      console.log('  - headline:', headline);
+      console.log('  - ual:', result.ual);
+      console.log('  - mediaItems count:', dbMediaItems.length);
+      console.log('  - mediaItems data:', JSON.stringify(dbMediaItems, null, 2));
+      
+      const savedReport = await NewsReport.create(newsReportData);
+      
+      console.log('✅ News Report saved to MongoDB:', result.ual);
+      console.log('✅ Saved report mediaItems count:', savedReport.mediaItems?.length || 0);
+      if (savedReport.mediaItems && savedReport.mediaItems.length > 0) {
+        console.log('✅ First saved media item:', JSON.stringify(savedReport.mediaItems[0], null, 2));
+      }
     } catch (dbError) {
       // Log error but don't fail the request if DB save fails
       console.error('Failed to save to MongoDB (non-critical):', dbError);

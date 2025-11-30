@@ -3,6 +3,13 @@
 import { useState, useEffect } from 'react'
 import { MapPin, Clock, User, ExternalLink, Shield, Search, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { ImageSlider } from '@/components/ImageSlider'
+
+interface MediaItem {
+  url: string
+  hash: string
+  type: 'image' | 'video'
+}
 
 interface NewsItem {
   _id: string
@@ -10,6 +17,14 @@ interface NewsItem {
   description: string
   ual: string
   mediaUrl: string
+  mediaItems?: MediaItem[]
+  jsonld?: {
+    associatedMedia?: Array<{
+      contentUrl?: string
+      encodingFormat?: string
+      sha256?: string
+    }>
+  }
   location: {
     latitude: number
     longitude: number
@@ -25,6 +40,38 @@ interface NewsItem {
   }
   publishedAt: string
   createdAt: string
+}
+
+// Helper function to extract media items from news item
+function extractMediaItems(item: NewsItem): MediaItem[] {
+  // First, try to use mediaItems field if it exists
+  if (item.mediaItems && item.mediaItems.length > 0) {
+    return item.mediaItems
+  }
+  
+  // Otherwise, extract from jsonld.associatedMedia
+  if (item.jsonld?.associatedMedia && Array.isArray(item.jsonld.associatedMedia)) {
+    return item.jsonld.associatedMedia.map((media: any) => {
+      const encodingFormat = media.encodingFormat || media['encodingFormat'] || ''
+      const isVideo = encodingFormat.startsWith('video/')
+      return {
+        url: media.contentUrl || media['contentUrl'] || '',
+        hash: media.sha256 || media['sha256'] || '',
+        type: (isVideo ? 'video' : 'image') as 'image' | 'video',
+      }
+    }).filter((item: MediaItem) => item.url) // Filter out items without URLs
+  }
+  
+  // Fallback to single mediaUrl
+  if (item.mediaUrl) {
+    return [{
+      url: item.mediaUrl,
+      hash: '',
+      type: 'image' as const,
+    }]
+  }
+  
+  return []
 }
 
 export default function NewsPage() {
@@ -173,28 +220,22 @@ export default function NewsPage() {
                     className="bg-white/95 backdrop-blur rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 group"
                   >
                     {/* Media */}
-                    {item.mediaUrl && (
-                      <div className="relative aspect-video bg-gray-200 overflow-hidden">
-                        {item.mediaUrl.startsWith('http') ? (
-                          <img
-                            src={item.mediaUrl}
-                            alt={item.headline}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none'
-                            }}
+                    {(() => {
+                      const extractedMedia = extractMediaItems(item)
+                      return extractedMedia.length > 0 ? (
+                        <div className="relative aspect-video bg-gray-200 overflow-hidden">
+                          <ImageSlider 
+                            mediaItems={extractedMedia}
+                            mediaUrl={item.mediaUrl}
+                            headline={item.headline}
                           />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <Shield className="w-12 h-12" />
+                          <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 z-10">
+                            <Shield className="w-3 h-3" />
+                            Verified
                           </div>
-                        )}
-                        <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                          <Shield className="w-3 h-3" />
-                          Verified
                         </div>
-                      </div>
-                    )}
+                      ) : null
+                    })()}
 
                     {/* Content */}
                     <div className="p-5">

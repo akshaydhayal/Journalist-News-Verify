@@ -6,6 +6,12 @@ import { KnowledgeAsset } from '@/types'
  * to publish to the OriginTrail DKG public node.
  */
 
+interface MediaItem {
+  url: string
+  hash: string
+  type: 'image' | 'video'
+}
+
 export function createKnowledgeAsset(
   headline: string,
   description: string,
@@ -26,15 +32,19 @@ export function createKnowledgeAsset(
     email?: string
     organization?: string
     contact?: string
-  }
+  },
+  mediaItems?: MediaItem[]
 ): KnowledgeAsset {
-  const mediaFormat = mediaUrl.includes('.jpg') || mediaUrl.includes('.jpeg') 
-    ? 'image/jpeg' 
-    : mediaUrl.includes('.png') 
-    ? 'image/png' 
-    : mediaUrl.includes('.mp4') 
-    ? 'video/mp4' 
-    : 'application/octet-stream'
+  const getMediaFormat = (url: string, type?: string) => {
+    if (type === 'video') return 'video/mp4'
+    if (url.includes('.jpg') || url.includes('.jpeg')) return 'image/jpeg'
+    if (url.includes('.png')) return 'image/png'
+    if (url.includes('.gif')) return 'image/gif'
+    if (url.includes('.webp')) return 'image/webp'
+    if (url.includes('.mp4')) return 'video/mp4'
+    if (url.includes('.webm')) return 'video/webm'
+    return 'application/octet-stream'
+  }
 
   // Generate a unique ID for this news report
   // Using headline slug + timestamp to make it unique
@@ -90,7 +100,32 @@ export function createKnowledgeAsset(
     spatialCoverage['schema:addressCountry'] = location.country
   }
 
-  return {
+  // Build associated media - single or array
+  let associatedMedia: any
+  
+  if (mediaItems && mediaItems.length > 1) {
+    // Multiple media items - create array
+    associatedMedia = mediaItems.map((item, index) => ({
+      '@type': 'MediaObject',
+      '@id': `${reportId}:media:${index + 1}`,
+      'contentUrl': item.url,
+      'encodingFormat': getMediaFormat(item.url, item.type),
+      'sha256': item.hash,
+      'dateCreated': timestamp,
+    }))
+  } else {
+    // Single media item
+    associatedMedia = {
+      '@type': 'MediaObject',
+      '@id': mediaUrl,
+      'contentUrl': mediaUrl,
+      'encodingFormat': getMediaFormat(mediaUrl),
+      'sha256': mediaHash,
+      'dateCreated': timestamp,
+    }
+  }
+
+  const knowledgeAsset: KnowledgeAsset = {
     '@context': 'https://schema.org/',
     '@id': reportId,
     '@type': 'SocialMediaPosting',
@@ -101,14 +136,8 @@ export function createKnowledgeAsset(
     'url': mediaUrl,
     'contentLocation': spatialCoverage,
     'author': author,
-    'associatedMedia': {
-      '@type': 'MediaObject',
-      '@id': mediaUrl,
-      'contentUrl': mediaUrl,
-      'encodingFormat': mediaFormat,
-      'sha256': mediaHash,
-      'dateCreated': timestamp,
-    },
+    'associatedMedia': associatedMedia,
   }
-}
 
+  return knowledgeAsset
+}
