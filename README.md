@@ -9,7 +9,7 @@ A decentralized news verification platform built for the OriginTrail hackathon. 
 - ⏰ Automatic timestamp recording
 - 🔗 JSON-LD Knowledge Asset generation with proper schema.org and PROV-O vocabularies
 - 🌐 Publishing to OriginTrail DKG
-- 💾 Media storage on Arweave (simulated for hackathon)
+- 💾 Media storage on Cloudinary (free cloud storage)
 - 🎨 Modern, beautiful UI with step-by-step workflow
 - ✅ Verifiable provenance and content hashing
 
@@ -46,17 +46,19 @@ DKG_NODE_PORT=8900
 DKG_BLOCKCHAIN_NAME=otp:20430
 
 # MongoDB (Required for news feed - stores published reports)
-MONGODB_URI=mongodb+srv://akshay:akshay@cluster0.jy7weei.mongodb.net/journalistNews
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/journalistNews
 
-# Arweave Gateway URL
-NEXT_PUBLIC_ARWEAVE_GATEWAY=https://arweave.net
+# Cloudinary (Required for media uploads)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 **Important Notes:**
 - `DKG_PRIVATE_KEY`: Your wallet's private key (without 0x prefix) - **Required for publishing**
 - `DKG_NODE_ENDPOINT`: Public DKG node endpoint (default provided)
-- `MONGODB_URI`: Optional - only needed if you want to store published reports in MongoDB
-- `MONGODB_URI` should end with the database name (e.g., `/JournalistNewsVerify`)
+- `MONGODB_URI`: Required for storing published reports in MongoDB
+- `CLOUDINARY_*`: Required for media uploads - get free credentials at [cloudinary.com](https://cloudinary.com/)
 
 ### Run Development Server
 
@@ -90,9 +92,10 @@ journalistNewsVerify/
 │   ├── PublishButton.tsx    # DKG publishing logic
 │   └── SuccessModal.tsx     # Success modal with UAL
 ├── lib/
-│   ├── arweave.ts           # Arweave upload (simulated)
+│   ├── arweave.ts           # Media upload to Cloudinary
 │   ├── dkg.ts               # DKG publishing and KA creation
 │   ├── hash.ts              # File hashing (SHA-256)
+│   ├── mongodb.ts           # MongoDB connection
 │   └── utils.ts             # Utility functions
 └── types/
     └── index.ts             # TypeScript type definitions
@@ -120,7 +123,7 @@ The generated Knowledge Assets follow this structure:
 - `schema:description`: Detailed description
 - `schema:datePublished`: ISO timestamp
 - `prov:hadPrimarySource`: Media file with:
-  - Content URL (Arweave)
+  - Content URL (Cloudinary)
   - SHA-256 hash
   - GPS coordinates
   - Encoding format
@@ -133,7 +136,8 @@ The generated Knowledge Assets follow this structure:
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
 - **OriginTrail DKG** - Decentralized Knowledge Graph (via dkg.js)
-- **MongoDB** (Optional) - Database for storing published reports
+- **MongoDB** - Database for storing published reports
+- **Cloudinary** - Cloud media storage
 - **Web Crypto API** - SHA-256 hashing
 - **Lucide React** - Icons
 - **OpenStreetMap Nominatim** - Reverse geocoding for location names
@@ -166,11 +170,11 @@ You need a wallet with TRAC tokens on the OriginTrail testnet to publish. You ca
 ## Next Steps (Future Enhancements)
 
 - [x] DKG publishing with public node
+- [x] Cloud media storage (Cloudinary)
+- [x] Feed of published reports
 - [ ] Verification system with token staking
 - [ ] Multi-file media support
-- [ ] Real Arweave integration
 - [ ] Wallet connection for DID
-- [ ] Feed of published reports
 - [ ] Search and filter functionality
 - [ ] MCP integration for AI agents
 - [ ] x402 payment protocol

@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['arweave.net', 'ipfs.io'],
+    domains: ['arweave.net', 'ipfs.io', 'res.cloudinary.com'],
   },
   // Externalize DKG packages to avoid webpack bundling issues with ethers
   experimental: {

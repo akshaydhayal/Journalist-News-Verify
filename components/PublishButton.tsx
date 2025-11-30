@@ -42,14 +42,14 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
       setProgress('Computing file hash...')
       const hash = await computeFileHash(mediaFile.file)
       
-      setProgress('Uploading to Arweave...')
-      const arweaveUrl = await uploadToArweave(mediaFile.file)
+      setProgress('Uploading media to cloud...')
+      const mediaUrl = await uploadToArweave(mediaFile.file)
       
       setProgress('Creating Knowledge Asset...')
       const knowledgeAsset = createKnowledgeAsset(
         report.headline,
         report.description,
-        arweaveUrl,
+        mediaUrl,
         hash,
         report.location,
         report.timestamp || new Date().toISOString(),
