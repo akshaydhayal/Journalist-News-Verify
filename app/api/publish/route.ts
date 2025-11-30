@@ -1,9 +1,5 @@
 // API route for publishing News Reports to DKG
-// Uses the dkg.js npm package directly
-
-// Force Node.js runtime for this route
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+// Uses dkg.js npm package with dynamic import for Vercel compatibility
 
 import { NextRequest, NextResponse } from 'next/server';
 import { KnowledgeAsset } from '@/types';
@@ -16,7 +12,6 @@ interface DKGPublishResult {
   ual?: string;
   datasetRoot?: string;
   error?: string;
-  jsonld?: KnowledgeAsset;
   operation?: any;
 }
 
@@ -33,12 +28,12 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if DKG is configured
-    const privateKey = process.env.PRIVATE_KEY || process.env.DKG_PRIVATE_KEY;
+    const privateKey = process.env.DKG_PRIVATE_KEY || process.env.PRIVATE_KEY;
     
     if (!privateKey) {
       return NextResponse.json({
         success: false,
-        error: 'DKG private key not configured. Please set PRIVATE_KEY or DKG_PRIVATE_KEY in environment variables.',
+        error: 'DKG private key not configured. Please set DKG_PRIVATE_KEY or PRIVATE_KEY in environment variables.',
         jsonld: knowledgeAsset,
       }, { status: 500 });
     }
@@ -51,15 +46,15 @@ export async function POST(request: NextRequest) {
     let result: DKGPublishResult;
     
     try {
-      console.log('Publishing to DKG...');
-      console.log('Node endpoint:', nodeEndpoint);
-      console.log('Blockchain:', blockchainName);
+      // Use the dkg.js npm package directly
+      // Dynamic import to avoid bundling issues on Vercel
+      const DKGModule = await import('dkg.js');
+      const DKG = DKGModule.default || DKGModule;
       
-      // Dynamic import of dkg.js npm package
-      const DKG = (await import('dkg.js')).default;
+      console.log('Creating DKG client with endpoint:', nodeEndpoint);
       
       // Create DKG client
-      const DkgClient = new DKG({
+      const dkgClient = new DKG({
         endpoint: nodeEndpoint,
         port: nodePort,
         blockchain: {
@@ -72,32 +67,25 @@ export async function POST(request: NextRequest) {
         nodeApiVersion: '/v1',
       });
       
-      // Check node info first
-      console.log('Checking node info...');
-      const nodeInfo = await DkgClient.node.info();
-      console.log('Node info:', JSON.stringify(nodeInfo));
-      
-      // Publish to DKG
-      console.log('Creating asset on DKG...');
-      const content = {
+      // Transform to DKG format
+      const dkgContent = {
         public: knowledgeAsset,
       };
       
-      const createResult = await DkgClient.asset.create(content, {
+      // Publish to DKG
+      console.log('Publishing to DKG...');
+      const createResult = await dkgClient.asset.create(dkgContent, {
         epochsNum: 2,
         minimumNumberOfFinalizationConfirmations: 3,
         minimumNumberOfNodeReplications: 1,
       });
       
       console.log('DKG publish completed');
-      console.log('Result:', JSON.stringify(createResult, null, 2));
+      console.log('Create result:', JSON.stringify(createResult, null, 2));
       
-      const ual = createResult.UAL;
-      const datasetRoot = createResult.datasetRoot || null;
-      
-      if (!ual) {
-        throw new Error('DKG publish succeeded but no UAL returned');
-      }
+      // Extract UAL and datasetRoot
+      const ual = createResult.UAL || createResult.ual;
+      const datasetRoot = createResult.publicAssertionId || createResult.datasetRoot || null;
       
       result = {
         success: true,
@@ -114,57 +102,55 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
     
-    if (!result.success) {
+    if (!result.success || !result.ual) {
       return NextResponse.json({
         success: false,
-        error: result.error || 'DKG publish failed',
+        error: result.error || 'DKG publish failed - no UAL returned',
         jsonld: knowledgeAsset,
       }, { status: 500 });
     }
 
-    // Save to MongoDB on successful publish (optional - MongoDB is not required)
+    // Save to MongoDB on successful publish
     try {
-      const db = await connectDB();
+      await connectDB();
       
-      if (db) {
-        const headline = knowledgeAsset['headline'] || knowledgeAsset['name'] || 'Untitled Report';
-        const description = knowledgeAsset['description'] || '';
-        const mediaUrl = knowledgeAsset['url'] || knowledgeAsset['associatedMedia']?.['contentUrl'] || '';
-        const mediaHash = knowledgeAsset['associatedMedia']?.['sha256'] || '';
-        const contentLocation = knowledgeAsset['contentLocation'] || {};
-        const location = {
-          latitude: contentLocation['schema:latitude'] || 0,
-          longitude: contentLocation['schema:longitude'] || 0,
-          displayName: contentLocation['schema:name'],
-          city: contentLocation['schema:addressLocality'],
-          state: contentLocation['schema:addressRegion'],
-          country: contentLocation['schema:addressCountry'],
-        };
-        const reporterId = knowledgeAsset['author']?.['@id'];
-        const author = knowledgeAsset['author'] || {};
-        const journalist = {
-          name: author['name'],
-          email: author['email'],
-          organization: author['affiliation']?.['name'],
-          contact: undefined, // Contact not stored in JSON-LD
-        };
-        
-        await NewsReport.create({
-          headline,
-          ual: result.ual!,
-          datasetRoot: result.datasetRoot || undefined,
-          publishedAt: new Date(knowledgeAsset['datePublished'] || new Date()),
-          reporterId: reporterId || undefined,
-          description,
-          mediaUrl,
-          mediaHash,
-          location,
-          journalist: Object.values(journalist).some(v => v) ? journalist : undefined,
-          jsonld: knowledgeAsset,
-        });
-        
-        console.log('News Report saved to MongoDB:', result.ual);
-      }
+      const headline = knowledgeAsset['headline'] || knowledgeAsset['name'] || 'Untitled Report';
+      const description = knowledgeAsset['description'] || '';
+      const mediaUrl = knowledgeAsset['url'] || knowledgeAsset['associatedMedia']?.['contentUrl'] || '';
+      const mediaHash = knowledgeAsset['associatedMedia']?.['sha256'] || '';
+      const contentLocation = knowledgeAsset['contentLocation'] || {};
+      const location = {
+        latitude: contentLocation['schema:latitude'] || 0,
+        longitude: contentLocation['schema:longitude'] || 0,
+        displayName: contentLocation['schema:name'],
+        city: contentLocation['schema:addressLocality'],
+        state: contentLocation['schema:addressRegion'],
+        country: contentLocation['schema:addressCountry'],
+      };
+      const reporterId = knowledgeAsset['author']?.['@id'];
+      const author = knowledgeAsset['author'] || {};
+      const journalist = {
+        name: author['name'],
+        email: author['email'],
+        organization: author['affiliation']?.['name'],
+        contact: undefined, // Contact not stored in JSON-LD
+      };
+      
+      await NewsReport.create({
+        headline,
+        ual: result.ual!,
+        datasetRoot: result.datasetRoot || undefined,
+        publishedAt: new Date(knowledgeAsset['datePublished'] || new Date()),
+        reporterId: reporterId || undefined,
+        description,
+        mediaUrl,
+        mediaHash,
+        location,
+        journalist: Object.values(journalist).some(v => v) ? journalist : undefined,
+        jsonld: knowledgeAsset,
+      });
+      
+      console.log('News Report saved to MongoDB:', result.ual);
     } catch (dbError) {
       // Log error but don't fail the request if DB save fails
       console.error('Failed to save to MongoDB (non-critical):', dbError);

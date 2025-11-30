@@ -4,15 +4,22 @@ const nextConfig = {
   images: {
     domains: ['arweave.net', 'ipfs.io'],
   },
+  // Externalize DKG packages to avoid webpack bundling issues with ethers
   experimental: {
-    // Externalize dkg.js and its dependencies to avoid webpack bundling issues
-    serverComponentsExternalPackages: ['dkg.js', 'assertion-tools', 'ethers'],
+    serverComponentsExternalPackages: ['dkg.js', 'assertion-tools', 'dkg-evm-module', 'ethers'],
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Externalize these packages on the server to avoid bundling issues
-      config.externals = config.externals || [];
-      config.externals.push('dkg.js', 'assertion-tools', 'ethers');
+      // Don't bundle these packages - let Node.js resolve them at runtime
+      config.externals = [...(config.externals || []), 
+        'dkg.js', 
+        'assertion-tools', 
+        'dkg-evm-module',
+        'ethers',
+        /^dkg\.js\/.*/,
+        /^assertion-tools\/.*/,
+        /^ethers\/.*/,
+      ];
     }
     return config;
   },

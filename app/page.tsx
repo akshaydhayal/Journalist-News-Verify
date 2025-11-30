@@ -92,12 +92,12 @@ export default function NewsPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-4 max-w-7xl">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
+        <div className="text-center mb-0">
+          {/* <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
             News Feed
-          </h1>
+          </h1> */}
           <p className="text-blue-200">
             Browse verifiable news reports published on the OriginTrail DKG
           </p>
@@ -105,7 +105,7 @@ export default function NewsPage() {
 
 
         {/* Search Bar */}
-        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg p-4 mb-6">
+        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg p-4 py-1 mb-6">
           <form onSubmit={handleSearch} className="flex gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />

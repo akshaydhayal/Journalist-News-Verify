@@ -1,24 +1,17 @@
-// Type declarations for dkg.js package
+// Type declarations for dkg.js
 
 declare module 'dkg.js' {
-  interface BlockchainConfig {
-    name: string;
-    privateKey: string;
-  }
-
   interface DKGConfig {
     endpoint: string;
-    port: string;
-    blockchain: BlockchainConfig;
+    port: string | number;
+    blockchain: {
+      name: string;
+      privateKey: string;
+    };
     maxNumberOfRetries?: number;
     frequency?: number;
     contentType?: string;
     nodeApiVersion?: string;
-  }
-
-  interface NodeInfo {
-    version: string;
-    [key: string]: any;
   }
 
   interface CreateOptions {
@@ -28,29 +21,28 @@ declare module 'dkg.js' {
   }
 
   interface CreateResult {
-    UAL: string;
+    UAL?: string;
+    ual?: string;
+    publicAssertionId?: string;
     datasetRoot?: string;
     operation?: any;
-    [key: string]: any;
   }
 
-  interface AssetContent {
-    public: any;
-    private?: any;
+  interface AssetOperations {
+    create(content: { public: any; private?: any }, options?: CreateOptions): Promise<CreateResult>;
+    get(ual: string): Promise<any>;
+  }
+
+  interface NodeOperations {
+    info(): Promise<any>;
   }
 
   class DKG {
     constructor(config: DKGConfig);
-    
-    node: {
-      info(): Promise<NodeInfo>;
-    };
-    
-    asset: {
-      create(content: AssetContent, options?: CreateOptions): Promise<CreateResult>;
-      get(ual: string): Promise<any>;
-    };
+    asset: AssetOperations;
+    node: NodeOperations;
   }
 
   export default DKG;
 }
+
