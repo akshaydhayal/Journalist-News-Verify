@@ -67,11 +67,13 @@ const NewsReportSchema = new Schema<INewsReport>(
     },
     mediaUrl: {
       type: String,
-      required: true,
+      required: false,
+      default: '',
     },
     mediaHash: {
       type: String,
-      required: true,
+      required: false,
+      default: '',
     },
     mediaItems: [{
       url: { type: String, required: true },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MapPin, Clock, User, ExternalLink, Shield, Search, Loader2 } from 'lucide-react'
+import { MapPin, Clock, User, ExternalLink, Shield, Search, Loader2, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { ImageSlider } from '@/components/ImageSlider'
 
@@ -81,9 +81,24 @@ export default function NewsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
 
+  // Initial load
   useEffect(() => {
     fetchNews()
   }, [])
+
+  // Debounced search - triggers as user types
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const trimmedInput = searchInput.trim()
+      if (trimmedInput !== searchQuery) {
+        setSearchQuery(trimmedInput)
+        fetchNews(trimmedInput || undefined)
+      }
+    }, 300) // 300ms debounce delay
+
+    return () => clearTimeout(timeoutId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
 
   const fetchNews = async (search?: string) => {
     setLoading(true)
@@ -91,8 +106,8 @@ export default function NewsPage() {
     
     try {
       const params = new URLSearchParams()
-      if (search) {
-        params.append('search', search)
+      if (search && search.trim()) {
+        params.append('search', search.trim())
       }
       params.append('limit', '50')
       
@@ -114,8 +129,15 @@ export default function NewsPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    fetchNews(searchInput)
-    setSearchQuery(searchInput)
+    // Search is already handled by the useEffect, but we can keep this for form submission
+    setSearchQuery(searchInput.trim())
+    fetchNews(searchInput.trim() || undefined)
+  }
+
+  const handleClear = () => {
+    setSearchInput('')
+    setSearchQuery('')
+    fetchNews()
   }
 
   const formatDate = (dateString: string) => {
@@ -138,47 +160,40 @@ export default function NewsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
-      <div className="container mx-auto px-4 py-4 max-w-7xl">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-indigo-900/30">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
-        <div className="text-center mb-0">
-          {/* <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
-            News Feed
-          </h1> */}
-          <p className="text-blue-200">
+        <div className="text-center mb-4">
+          <p className="text-sm text-slate-400">
             Browse verifiable news reports published on the OriginTrail DKG
           </p>
         </div>
 
 
         {/* Search Bar */}
-        <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg p-4 py-1 mb-6">
+        <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl shadow-xl border border-purple-500/20 p-4 mb-6">
           <form onSubmit={handleSearch} className="flex gap-2">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400 w-5 h-5" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search news by headline or description..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                className="w-full pl-10 pr-4 py-3 border border-purple-500/30 rounded-xl bg-slate-700/50 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
               />
             </div>
             <button
               type="submit"
-              className="px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-medium hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg hover:shadow-purple-500/50"
             >
               Search
             </button>
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => {
-                  setSearchInput('')
-                  setSearchQuery('')
-                  fetchNews()
-                }}
-                className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                onClick={handleClear}
+                className="px-4 py-3 bg-slate-700/50 text-slate-300 rounded-xl font-medium hover:bg-slate-600/50 transition-colors border border-slate-600"
               >
                 Clear
               </button>
@@ -189,14 +204,14 @@ export default function NewsPage() {
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-blue-300 animate-spin" />
-            <span className="ml-3 text-blue-200">Loading news...</span>
+            <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+            <span className="ml-3 text-slate-300">Loading news...</span>
           </div>
         )}
 
         {/* Error State */}
         {error && !loading && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg">
+          <div className="bg-red-900/40 border border-red-500/30 text-red-200 px-6 py-4 rounded-xl shadow-lg backdrop-blur-sm">
             <p className="font-medium">Error</p>
             <p className="text-sm">{error}</p>
           </div>
@@ -206,10 +221,10 @@ export default function NewsPage() {
         {!loading && !error && (
           <>
             {news.length === 0 ? (
-              <div className="bg-white/95 backdrop-blur rounded-xl shadow-lg p-12 text-center">
-                <p className="text-gray-600 text-lg">No news reports found</p>
+              <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl shadow-xl border border-purple-500/20 p-12 text-center">
+                <p className="text-slate-200 text-lg">No news reports found</p>
                 {searchQuery && (
-                  <p className="text-gray-500 mt-2">Try a different search term</p>
+                  <p className="text-slate-400 mt-2">Try a different search term</p>
                 )}
               </div>
             ) : (
@@ -217,7 +232,7 @@ export default function NewsPage() {
                 {news.map((item) => (
                   <article
                     key={item._id}
-                    className="bg-white/95 backdrop-blur rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 group"
+                    className="bg-slate-800/60 backdrop-blur-md rounded-2xl shadow-xl border border-purple-500/20 overflow-hidden hover:shadow-2xl hover:border-purple-500/40 hover:bg-slate-800/80 transition-all duration-300 group"
                   >
                     {/* Media */}
                     {(() => {
@@ -234,53 +249,65 @@ export default function NewsPage() {
                             Verified
                           </div>
                         </div>
-                      ) : null
+                      ) : (
+                        <div className="relative aspect-video bg-slate-700/50 border-b border-purple-500/20 flex items-center justify-center">
+                          <div className="text-center px-4">
+                            <FileText className="w-12 h-12 mx-auto mb-2 text-slate-500" />
+                            <p className="text-sm text-slate-400 font-medium">No media published</p>
+                            <p className="text-xs text-slate-500 mt-1">Text-only report</p>
+                          </div>
+                          <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 z-10">
+                            <Shield className="w-3 h-3" />
+                            Verified
+                          </div>
+                        </div>
+                      )
                     })()}
 
                     {/* Content */}
                     <div className="p-5">
-                      <h2 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+                      <h2 className="text-xl font-bold text-slate-100 mb-2 line-clamp-2 group-hover:text-purple-300 transition-colors">
                         {item.headline}
                       </h2>
                       
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                      <p className="text-slate-300 text-sm mb-4 line-clamp-3">
                         {item.description}
                       </p>
 
                       {/* Metadata */}
                       <div className="space-y-2 mb-4">
                         {item.location && (
-                          <div className="flex items-start gap-2 text-sm text-gray-600">
-                            <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-600" />
+                          <div className="flex items-start gap-2 text-sm text-slate-400">
+                            <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-purple-400" />
                             <span className="line-clamp-1">{getLocationDisplay(item.location)}</span>
                           </div>
                         )}
 
                         {item.journalist?.name && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <User className="w-4 h-4 text-primary-600" />
+                          <div className="flex items-center gap-2 text-sm text-slate-400">
+                            <User className="w-4 h-4 text-purple-400" />
                             <span>
                               {item.journalist.name}
                               {item.journalist.organization && (
-                                <span className="text-gray-500"> • {item.journalist.organization}</span>
+                                <span className="text-slate-500"> • {item.journalist.organization}</span>
                               )}
                             </span>
                           </div>
                         )}
 
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
                           <Clock className="w-3 h-3" />
                           <span>{formatDate(item.publishedAt)}</span>
                         </div>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex gap-2 pt-4 border-t border-gray-200">
+                      <div className="flex gap-2 pt-4 border-t border-purple-500/20">
                         <a
                           href={`https://dkg-testnet.origintrail.io/explore?ual=${encodeURIComponent(item.ual)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-sm font-medium hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg hover:shadow-purple-500/50"
                         >
                           <ExternalLink className="w-4 h-4" />
                           Verify on DKG
@@ -294,7 +321,7 @@ export default function NewsPage() {
 
             {/* Results Count */}
             {searchQuery && news.length > 0 && (
-              <div className="mt-6 text-center text-blue-200 text-sm">
+              <div className="mt-6 text-center text-slate-400 text-sm">
                 Found {news.length} result{news.length !== 1 ? 's' : ''} for "{searchQuery}"
               </div>
             )}

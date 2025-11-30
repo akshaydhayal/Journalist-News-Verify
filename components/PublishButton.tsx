@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Upload, Loader2 } from 'lucide-react'
 import { NewsReport } from '@/types'
 import { computeFileHash } from '@/lib/hash'
-import { uploadToArweave } from '@/lib/arweave'
+import { uploadMedia } from '@/lib/arweave'
 import { createKnowledgeAsset } from '@/lib/dkg'
 
 interface PublishButtonProps {
@@ -31,50 +31,50 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
   const [progress, setProgress] = useState<string>('')
 
   const handlePublish = async () => {
-    if (!report.media || report.media.length === 0 || !report.location || !report.headline || !report.description) {
-      setError('Missing required information')
+    if (!report.location || !report.headline || !report.description) {
+      setError('Missing required information: headline, description, and location are required')
       return
     }
 
     onPublishingChange(true)
     setError(null)
-    setProgress('Processing media files...')
 
     try {
-      // Upload all media files
+      // Upload media files if available (media is optional)
       const uploadedMedia: UploadedMedia[] = []
       
-      for (let i = 0; i < report.media.length; i++) {
-        const mediaFile = report.media[i]
-        const isVideo = mediaFile.file.type.startsWith('video/')
+      if (report.media && report.media.length > 0) {
+        setProgress('Processing media files...')
         
-        setProgress(`Computing hash for file ${i + 1} of ${report.media.length}...`)
-        const hash = await computeFileHash(mediaFile.file)
-        
-        setProgress(`Uploading file ${i + 1} of ${report.media.length} to cloud...`)
-        const url = await uploadToArweave(mediaFile.file)
-        
-        uploadedMedia.push({
-          url,
-          hash,
-          type: isVideo ? 'video' : 'image'
-        })
+        for (let i = 0; i < report.media.length; i++) {
+          const mediaFile = report.media[i]
+          const isVideo = mediaFile.file.type.startsWith('video/')
+          
+          setProgress(`Uploading file ${i + 1} of ${report.media.length} to cloud...`)
+          const uploadResult = await uploadMedia(mediaFile.file)
+          
+          uploadedMedia.push({
+            url: uploadResult.url,
+            hash: uploadResult.hash,
+            type: isVideo ? 'video' : 'image'
+          })
+        }
       }
       
-      // Use the first media for the primary fields (backwards compatibility)
+      // Use the first media for the primary fields if available, otherwise use placeholder
       const primaryMedia = uploadedMedia[0]
       
       setProgress('Creating Knowledge Asset...')
       const knowledgeAsset = createKnowledgeAsset(
         report.headline,
         report.description,
-        primaryMedia.url,
-        primaryMedia.hash,
+        primaryMedia?.url || 'https://example.com/no-media',
+        primaryMedia?.hash || '0x0000000000000000000000000000000000000000000000000000000000000000',
         report.location,
         report.timestamp || new Date().toISOString(),
         report.reporterId,
         report.journalist,
-        uploadedMedia // Pass all media items for associatedMedia array
+        uploadedMedia.length > 0 ? uploadedMedia : undefined // Pass media items only if available
       )
 
       setProgress('Publishing to OriginTrail DKG...')
@@ -113,14 +113,14 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
   return (
     <div className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-red-900/40 border border-red-500/30 text-red-200 px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm">
           <p className="font-medium">Error</p>
           <p className="text-sm">{error}</p>
         </div>
       )}
       
       {progress && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">
+        <div className="bg-purple-900/40 border border-purple-500/30 text-purple-200 px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
             <p className="text-sm">{progress}</p>
@@ -131,7 +131,7 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
       <button
         onClick={handlePublish}
         disabled={isPublishing}
-        className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white py-4 px-6 rounded-lg font-semibold hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-6 rounded-xl font-semibold hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isPublishing ? (
           <>
@@ -146,7 +146,7 @@ export function PublishButton({ report, onSuccess, isPublishing, onPublishingCha
         )}
       </button>
 
-      <p className="text-xs text-gray-500 text-center">
+      <p className="text-xs text-slate-400 text-center">
         Your report will be published as a verifiable Knowledge Asset on the OriginTrail Decentralized Knowledge Graph
       </p>
     </div>

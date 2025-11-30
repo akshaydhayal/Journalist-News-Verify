@@ -224,15 +224,13 @@ export async function POST(request: NextRequest) {
         publishedAt: new Date(knowledgeAsset['datePublished'] || new Date()),
         reporterId: reporterId || undefined,
         description,
-        mediaUrl,
-        mediaHash,
+        mediaUrl: mediaUrl || '', // Empty string if no media
+        mediaHash: mediaHash || '', // Empty string if no media
+        mediaItems: dbMediaItems, // Can be empty array if no media
         location,
         journalist: Object.values(journalist).some(v => v) ? journalist : undefined,
         jsonld: knowledgeAsset,
       };
-      
-      // ALWAYS add mediaItems array (even if empty, but should have items)
-      newsReportData.mediaItems = dbMediaItems;
       
       console.log('📝 Creating NewsReport with:');
       console.log('  - headline:', headline);

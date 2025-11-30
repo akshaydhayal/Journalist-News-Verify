@@ -16,12 +16,10 @@ export default function PublishPage() {
   const [publishedUAL, setPublishedUAL] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
 
-  // Check if form is complete
+  // Check if form is complete (media is optional)
   const isFormComplete = !!(
     report.headline?.trim() &&
     report.description?.trim() &&
-    report.media &&
-    report.media.length > 0 &&
     report.location
   )
 
@@ -87,31 +85,31 @@ export default function PublishPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-indigo-900/30">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
+          <h1 className="text-4xl font-bold text-slate-100 mb-2 tracking-tight">
             Publish News Report
           </h1>
-          <p className="text-blue-200">
+          <p className="text-slate-400">
             Create and publish verifiable news reports on the OriginTrail DKG
           </p>
         </div>
 
         {/* Main Form Card */}
-        <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
+        <div className="bg-slate-800/60 backdrop-blur-md rounded-2xl shadow-xl border border-purple-500/20 p-6 md:p-8 space-y-6">
           
           {/* Section 1: Journalist Details */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <User className="w-5 h-5 text-primary-600" />
+            <h2 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2">
+              <User className="w-5 h-5 text-purple-400" />
               Journalist Information
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="journalist-name" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="journalist-name" className="block text-sm font-medium text-slate-300 mb-1">
                   Name
                 </label>
                 <input
@@ -123,12 +121,12 @@ export default function PublishPage() {
                     journalist: { ...prev.journalist, name: e.target.value }
                   }))}
                   placeholder="Your full name"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="w-full px-4 py-3 border border-purple-500/30 rounded-xl bg-slate-700/50 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
                 />
               </div>
 
               <div>
-                <label htmlFor="journalist-email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="journalist-email" className="block text-sm font-medium text-slate-300 mb-1">
                   Email
                 </label>
                 <input
@@ -140,12 +138,12 @@ export default function PublishPage() {
                     journalist: { ...prev.journalist, email: e.target.value }
                   }))}
                   placeholder="your.email@example.com"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="w-full px-4 py-3 border border-purple-500/30 rounded-xl bg-slate-700/50 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
                 />
               </div>
 
               <div>
-                <label htmlFor="journalist-organization" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="journalist-organization" className="block text-sm font-medium text-slate-300 mb-1">
                   Organization
                 </label>
                 <input
@@ -157,12 +155,12 @@ export default function PublishPage() {
                     journalist: { ...prev.journalist, organization: e.target.value }
                   }))}
                   placeholder="News organization or freelance"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="w-full px-4 py-3 border border-purple-500/30 rounded-xl bg-slate-700/50 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
                 />
               </div>
 
               <div>
-                <label htmlFor="journalist-contact" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="journalist-contact" className="block text-sm font-medium text-slate-300 mb-1">
                   Contact (Optional)
                 </label>
                 <input
@@ -174,25 +172,25 @@ export default function PublishPage() {
                     journalist: { ...prev.journalist, contact: e.target.value }
                   }))}
                   placeholder="Phone or social media handle"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="w-full px-4 py-3 border border-purple-500/30 rounded-xl bg-slate-700/50 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
                 />
               </div>
             </div>
           </section>
 
           {/* Divider */}
-          <hr className="border-gray-200" />
+          <hr className="border-purple-500/20" />
 
           {/* Section 2: Report Details (Title & Description) */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary-600" />
+            <h2 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-400" />
               Report Details
             </h2>
             
             <div className="space-y-4">
               <div>
-                <label htmlFor="headline" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="headline" className="block text-sm font-medium text-slate-300 mb-1">
                   Headline *
                 </label>
                 <input
@@ -201,14 +199,14 @@ export default function PublishPage() {
                   value={report.headline || ''}
                   onChange={(e) => setReport(prev => ({ ...prev, headline: e.target.value }))}
                   placeholder="Enter a clear, concise headline"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                  className="w-full px-4 py-3 border border-purple-500/30 rounded-xl bg-slate-700/50 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition"
                   maxLength={200}
                 />
-                <p className="text-xs text-gray-500 mt-1 text-right">{(report.headline || '').length}/200</p>
+                <p className="text-xs text-slate-400 mt-1 text-right">{(report.headline || '').length}/200</p>
               </div>
 
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="description" className="block text-sm font-medium text-slate-300 mb-1">
                   Description *
                 </label>
                 <textarea
@@ -217,29 +215,29 @@ export default function PublishPage() {
                   onChange={(e) => setReport(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Describe what you witnessed. Include relevant details, context, and observations."
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition resize-none"
+                  className="w-full px-4 py-3 border border-purple-500/30 rounded-xl bg-slate-700/50 text-slate-100 placeholder-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition resize-none"
                   maxLength={2000}
                 />
-                <p className="text-xs text-gray-500 mt-1 text-right">{(report.description || '').length}/2000</p>
+                <p className="text-xs text-slate-400 mt-1 text-right">{(report.description || '').length}/2000</p>
               </div>
             </div>
           </section>
 
           {/* Divider */}
-          <hr className="border-gray-200" />
+          <hr className="border-purple-500/20" />
 
           {/* Section 3: Media Upload */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary-600" />
+            <h2 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-purple-400" />
               Upload Evidence
             </h2>
 
             <div
               className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
                 dragActive
-                  ? 'border-primary-500 bg-primary-50'
-                  : 'border-gray-300 hover:border-primary-400 bg-gray-50'
+                  ? 'border-purple-500 bg-purple-500/20'
+                  : 'border-purple-500/30 hover:border-purple-500/50 bg-slate-700/30'
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -255,12 +253,12 @@ export default function PublishPage() {
                 id="media-upload"
               />
               <label htmlFor="media-upload" className="cursor-pointer">
-                <Upload className="w-10 h-10 mx-auto mb-3 text-gray-400" />
-                <p className="text-gray-600 mb-1">
+                <Upload className="w-10 h-10 mx-auto mb-3 text-purple-400" />
+                <p className="text-slate-300 mb-1">
                   Drag and drop or{' '}
-                  <span className="text-primary-600 font-medium">browse</span>
+                  <span className="text-purple-400 font-medium">browse</span>
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-400">
                   Photos and videos (JPG, PNG, MP4)
                 </p>
               </label>
@@ -270,7 +268,7 @@ export default function PublishPage() {
             {report.media && report.media.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
                 {report.media.map((media, index) => (
-                  <div key={index} className="relative group aspect-video rounded-lg overflow-hidden bg-gray-100">
+                  <div key={index} className="relative group aspect-video rounded-xl overflow-hidden bg-slate-700/50 shadow-lg border border-purple-500/20">
                     {media.file.type.startsWith('image/') ? (
                       <img
                         src={media.preview}
@@ -304,35 +302,42 @@ export default function PublishPage() {
           </section>
 
           {/* Divider */}
-          <hr className="border-gray-200" />
+          <hr className="border-purple-500/20" />
 
-          {/* Section 4: Location */}
+          {/* Section 4: Location & Timestamp - Side by Side */}
           <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary-600" />
-              Location
-            </h2>
-            <LocationCapture onLocationCaptured={handleLocationCaptured} />
-          </section>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Location */}
+              <div>
+                <h2 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-purple-400" />
+                  Location
+                </h2>
+                <LocationCapture onLocationCaptured={handleLocationCaptured} />
+              </div>
 
-          {/* Divider */}
-          <hr className="border-gray-200" />
-
-          {/* Section 5: Timestamp */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary-600" />
-              Timestamp
-            </h2>
-            <div className="bg-gray-50 rounded-lg px-4 py-3 text-gray-700">
-              {report.timestamp ? new Date(report.timestamp).toLocaleString() : 'Not set'}
+              {/* Timestamp */}
+              <div>
+                <h2 className="text-lg font-semibold text-slate-100 mb-3 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-purple-400" />
+                  Timestamp
+                </h2>
+                <div className="bg-purple-900/20 rounded-xl px-4 py-3 text-slate-200 border border-purple-500/30 backdrop-blur-sm">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                    <span className="text-sm">
+                      {report.timestamp ? new Date(report.timestamp).toLocaleString() : 'Not set'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
           {/* JSON-LD Preview (only show when form has data) */}
-          {(report.headline || report.description) && report.media && report.media.length > 0 && report.location && (
+          {(report.headline || report.description) && report.location && (
             <>
-              <hr className="border-gray-200" />
+              <hr className="border-purple-500/20" />
               <section>
                 <JsonLdPreview report={report} />
               </section>
@@ -340,15 +345,14 @@ export default function PublishPage() {
           )}
 
           {/* Divider */}
-          <hr className="border-gray-200" />
+          <hr className="border-purple-500/20" />
 
           {/* Publish Section */}
           <section>
             {!isFormComplete && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
-                <p className="text-sm text-amber-800">
+              <div className="bg-amber-900/40 border border-amber-500/30 rounded-xl px-4 py-3 mb-4 backdrop-blur-sm">
+                <p className="text-sm text-amber-200">
                   <strong>Required:</strong> Please fill in all fields to publish.
-                  {!report.media?.length && ' • Add media'}
                   {!report.location && ' • Allow location access'}
                   {!report.headline?.trim() && ' • Add headline'}
                   {!report.description?.trim() && ' • Add description'}
@@ -366,7 +370,7 @@ export default function PublishPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-blue-200/60 text-sm mt-6">
+        <p className="text-center text-slate-400 text-sm mt-6">
           Powered by OriginTrail DKG • Decentralized Knowledge Graph
         </p>
 

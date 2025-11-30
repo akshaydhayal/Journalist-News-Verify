@@ -100,32 +100,45 @@ export function createKnowledgeAsset(
     spatialCoverage['schema:addressCountry'] = location.country
   }
 
-  // Build associated media - single or array
+  // Build associated media - single, array, or omit if no media
   let associatedMedia: any
   
-  if (mediaItems && mediaItems.length > 1) {
-    // Multiple media items - create array
-    associatedMedia = mediaItems.map((item, index) => ({
-      '@type': 'MediaObject',
-      '@id': `${reportId}:media:${index + 1}`,
-      'contentUrl': item.url,
-      'encodingFormat': getMediaFormat(item.url, item.type),
-      'sha256': item.hash,
-      'dateCreated': timestamp,
-    }))
-  } else {
-    // Single media item
+  if (mediaItems && mediaItems.length > 0) {
+    if (mediaItems.length > 1) {
+      // Multiple media items - create array
+      associatedMedia = mediaItems.map((item, index) => ({
+        '@type': 'MediaObject',
+        '@id': `${reportId}:media:${index + 1}`,
+        'contentUrl': item.url,
+        'encodingFormat': getMediaFormat(item.url, item.type),
+        'sha256': item.hash,
+        'dateCreated': timestamp,
+      }))
+    } else {
+      // Single media item
+      associatedMedia = {
+        '@type': 'MediaObject',
+        '@id': `${reportId}:media:1`,
+        'contentUrl': mediaItems[0].url,
+        'encodingFormat': getMediaFormat(mediaItems[0].url, mediaItems[0].type),
+        'sha256': mediaItems[0].hash,
+        'dateCreated': timestamp,
+      }
+    }
+  } else if (mediaUrl && mediaUrl !== 'https://example.com/no-media') {
+    // Fallback: use mediaUrl if provided (for backwards compatibility)
     associatedMedia = {
       '@type': 'MediaObject',
-      '@id': mediaUrl,
+      '@id': `${reportId}:media:1`,
       'contentUrl': mediaUrl,
       'encodingFormat': getMediaFormat(mediaUrl),
       'sha256': mediaHash,
       'dateCreated': timestamp,
     }
   }
+  // If no media at all, associatedMedia will be undefined and won't be included
 
-  const knowledgeAsset: KnowledgeAsset = {
+  const knowledgeAsset: any = {
     '@context': 'https://schema.org/',
     '@id': reportId,
     '@type': 'SocialMediaPosting',
@@ -133,11 +146,20 @@ export function createKnowledgeAsset(
     'headline': headline,
     'description': description,
     'datePublished': timestamp,
-    'url': mediaUrl,
     'contentLocation': spatialCoverage,
     'author': author,
-    'associatedMedia': associatedMedia,
   }
+
+  // Only include url and associatedMedia if media exists
+  if (mediaUrl && mediaUrl !== 'https://example.com/no-media') {
+    knowledgeAsset['url'] = mediaUrl
+  }
+  
+  if (associatedMedia) {
+    knowledgeAsset['associatedMedia'] = associatedMedia
+  }
+
+  return knowledgeAsset as KnowledgeAsset
 
   return knowledgeAsset
 }
